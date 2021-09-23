@@ -129,6 +129,12 @@ dmypy.json
 .pyre/
 
 # User define
+.idea/*
 src/ref/
 data/log/*
-.idea/*
+data/exp_result/*
+data/model/*
+data/plot/*
+.DS_Store
+data/.DS_Store
+src/.DS_Store
