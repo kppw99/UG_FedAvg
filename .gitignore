@@ -129,4 +129,6 @@ dmypy.json
 .pyre/
 
 # User define
-src/ref/*
+src/ref/
+data/log/*
+.idea/*
