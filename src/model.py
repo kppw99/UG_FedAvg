@@ -171,6 +171,139 @@ def _train_local_model(model_dict, criterion_dict, optimizer_dict,
     return logs
 
 
+def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
+                              x_train_dict, y_train_dict, x_test_dict, y_test_dict,
+                              number_of_samples, epochs, batch_size, verbose=True):
+    name_of_x_train_sets = list(x_train_dict.keys())
+    name_of_y_train_sets = list(y_train_dict.keys())
+    name_of_x_test_sets = list(x_test_dict.keys())
+    name_of_y_test_sets = list(y_test_dict.keys())
+
+    name_of_models = list(model_dict.keys())
+    name_of_optimizers = list(optimizer_dict.keys())
+    name_of_criterions = list(criterion_dict.keys())
+
+    logs = list()
+    uncert_threshold = 0.2
+    if verbose is False:
+        for i in tqdm(range(number_of_samples), desc='Train local models'):
+            train_pre_data = DataLoader(TensorDataset(x_train_dict[name_of_x_train_sets[i]],
+                                                      y_train_dict[name_of_y_train_sets[i]]),
+                                        batch_size=1, shuffle=False)
+            pre_model = model_dict[name_of_models[i]]
+            pre_model.eval()
+
+            new_data = list()
+            new_target = list()
+            with torch.no_grad():
+                true_cnt = 0
+                false_cnt = 0
+                for data, target in train_pre_data:
+                    output = pre_model(data)
+                    prediction = output.argmax(dim=1, keepdim=True)
+
+                    # Add uncertainty algorithm
+                    if prediction[0] == target[0]:
+                        condition = True
+                        true_cnt += 1
+                    else:
+                        entropy = cal_entropy(output[0].tolist())
+                        if entropy < uncert_threshold:
+                            condition = False
+                            false_cnt += 1
+                        else:
+                            condition = True
+                            true_cnt += 1
+
+                    if condition:
+                        new_data.append(data[0])
+                        new_target.append(target[0])
+            new_data = torch.stack(new_data)
+            new_target = torch.stack(new_target)
+
+            print(true_cnt, false_cnt)
+
+            train_data = DataLoader(TensorDataset(new_data, new_target),
+                                    batch_size=batch_size, shuffle=True)
+
+            test_data = DataLoader(TensorDataset(x_test_dict[name_of_x_test_sets[i]],
+                                                 y_test_dict[name_of_y_test_sets[i]]),
+                                   batch_size=1)
+
+            model = model_dict[name_of_models[i]]
+            criterion = criterion_dict[name_of_criterions[i]]
+            optimizer = optimizer_dict[name_of_optimizers[i]]
+
+            epoch_logs = list()
+            for epoch in range(epochs):
+                train_loss, train_accuracy = _train(model, train_data, criterion, optimizer)
+                test_loss, test_accuracy = _evaluate(model, test_data, criterion)
+                epoch_logs.append([train_loss, train_accuracy, test_loss, test_accuracy])
+            logs.append(epoch_logs)
+    else:
+        for i in range(number_of_samples):
+            train_pre_data = DataLoader(TensorDataset(x_train_dict[name_of_x_train_sets[i]],
+                                                      y_train_dict[name_of_y_train_sets[i]]),
+                                        batch_size=1, shuffle=False)
+            pre_model = model_dict[name_of_models[i]]
+            pre_model.eval()
+
+            new_data = list()
+            new_target = list()
+            with torch.no_grad():
+                true_cnt = 0
+                false_cnt = 0
+                for data, target in train_pre_data:
+                    output = pre_model(data)
+                    prediction = output.argmax(dim=1, keepdim=True)
+
+                    # Add uncertainty algorithm
+                    if prediction[0] == target[0]:
+                        condition = True
+                        true_cnt += 1
+                    else:
+                        entropy = cal_entropy(output[0].tolist())
+                        if entropy < uncert_threshold:
+                            condition = False
+                            false_cnt += 1
+                        else:
+                            condition = True
+                            true_cnt += 1
+
+                    if condition:
+                        new_data.append(data[0])
+                        new_target.append(target[0])
+            new_data = torch.stack(new_data)
+            new_target = torch.stack(new_target)
+
+            print(true_cnt, false_cnt)
+
+            train_data = DataLoader(TensorDataset(new_data, new_target),
+                                    batch_size=batch_size, shuffle=True)
+
+            test_data = DataLoader(TensorDataset(x_test_dict[name_of_x_test_sets[i]],
+                                                 y_test_dict[name_of_y_test_sets[i]]), batch_size=1)
+
+            model = model_dict[name_of_models[i]]
+            criterion = criterion_dict[name_of_criterions[i]]
+            optimizer = optimizer_dict[name_of_optimizers[i]]
+
+            print('Local_{}'.format(i))
+            print('--------------------------------------------')
+            epoch_logs = list()
+            for epoch in range(epochs):
+                train_loss, train_accuracy = _train(model, train_data, criterion, optimizer)
+                test_loss, test_accuracy = _evaluate(model, test_data, criterion)
+                print("[epoch {}/{}]".format(epoch + 1, epochs)
+                      + " train_loss: {:0.4f}, train_acc: {:0.4f}".format(train_loss, train_accuracy)
+                      + " | test_loss: {:0.4f}, test_acc: {:0.4f}".format(test_loss, test_accuracy))
+                epoch_logs.append([train_loss, train_accuracy, test_loss, test_accuracy])
+            logs.append(epoch_logs)
+            print('--------------------------------------------\n')
+
+    return logs
+
+
 def _update_main_model(main_model, model_dict):
     node_states = list()
     node_cnt = len(model_dict)
@@ -224,10 +357,62 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
     for i in range(iteration):
         print('[*] Iteration: {}/{}'.format(str(i + 1), str(iteration)))
         local_model_dict = _sync_model(main_model, local_model_dict)
+
         local_log = _train_local_model(local_model_dict, local_criterion_dict, local_optimizer_dict,
                                        x_train_dict, y_train_dict, x_test_dict, y_test_dict,
                                        number_of_samples, epochs=epochs, batch_size=batch_size,
                                        verbose=verbose)
+
+        main_model = _update_main_model(main_model, local_model_dict)
+        test_loss, test_accuracy = _evaluate(main_model, test_data, main_criterion)
+        print("[iter {}/{}]".format(i + 1, iteration)
+              + " main_loss: {:0.4f}, main_acc: {:0.4f}".format(test_loss, test_accuracy))
+        create_eval_report(main_model, x_test, y_test, printable=verbose)
+        main_logs.append([test_loss, test_accuracy])
+        local_logs.append(local_log)
+
+    log_dict = {
+        'main': main_logs,
+        'local': local_logs
+    }
+
+    filetime = time.strftime("_%Y%m%d-%H%M%S")
+    temp_name = '_' + str(number_of_samples) + '_' + str(iteration) + '_' + str(epochs) + '_' + str(batch_size)
+    filename = '../data/exp_result/' + log_name + temp_name + filetime + '.pkl'
+
+    with open(filename, 'wb') as f:
+        pickle.dump(log_dict, f)
+
+    return main_model, local_model_dict
+
+
+def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_test, y_test,
+                              number_of_samples, iteration, epochs, batch_size, log_name, verbose=False):
+    if torch.cuda.is_available():
+        main_model = load_model('../data/model/pre_train_model')
+    else:
+        main_model = load_model('../data/model/pre_train_model_no_cuda')
+
+    main_criterion = nn.CrossEntropyLoss()
+
+    local_model_dict, local_optimizer_dict, local_criterion_dict = _create_local_models(number_of_samples)
+    _, test_data = create_dataloader(None, None, x_test, y_test, batch_size)
+
+    main_logs = list()
+    local_logs = list()
+    for i in range(iteration):
+        print('[*] Iteration: {}/{}'.format(str(i + 1), str(iteration)))
+        local_model_dict = _sync_model(main_model, local_model_dict)
+
+        local_log = _uncert_train_local_model(local_model_dict,
+                                              local_criterion_dict, local_optimizer_dict,
+                                              x_train_dict, y_train_dict,
+                                              x_test_dict, y_test_dict,
+                                              number_of_samples,
+                                              epochs=epochs,
+                                              batch_size=batch_size,
+                                              verbose=verbose)
+
         main_model = _update_main_model(main_model, local_model_dict)
         test_loss, test_accuracy = _evaluate(main_model, test_data, main_criterion)
         print("[iter {}/{}]".format(i + 1, iteration)

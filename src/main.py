@@ -38,19 +38,21 @@ if __name__=='__main__':
     COR_LOCAL_RATIO = 1.0
     CENTRAL_EPOCHS = 20
 
-    COR_MODE_LIST = [1, 2]  # 1, 2
+    COR_MODE_LIST = [1]  # 1, 2
     MODEL_LIST = ['federated']   # central, federate
-    DATASET_LIST = ['non-iid']   # iid, non-iid
+    DATASET_LIST = ['iid']   # iid, non-iid
 
     ## IID ##########################################
+    IID_NON_COR = False
     IID_EPOCHS = 10
     IID_ITERATION = 20
 
-    COR_LABEL_RATIO_LIST = [0.4, 0.3, 0.2]
-    COR_DATA_RATIO_LIST = [0.6, 0.5, 0.4, 0.3]
+    COR_LABEL_RATIO_LIST = [0.2] # 0.4, 0.3, 0.2
+    COR_DATA_RATIO_LIST = [0.6] # 0.6, 0.5, 0.4, 0.3
     #################################################
 
     ## Non-IID ######################################
+    NON_IID_NON_COR = False
     NON_IID_EPOCHS = 15
     NON_IID_ITERATION = 25
     PDIST = 0.9
@@ -93,21 +95,22 @@ if __name__=='__main__':
         for DATASET in DATASET_LIST:
             # IID Dataset
             if DATASET == 'iid':
-                # Non-corrupted
-                tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_corrupted_iid_samples(
-                    tr_X, tr_y, te_X, te_y,
-                    cor_local_ratio=0.0,
-                    num_of_sample=NUM_OF_LOCAL,
-                    verbose=True
-                )
+                if IID_NON_COR:
+                    # Non-corrupted
+                    tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_corrupted_iid_samples(
+                        tr_X, tr_y, te_X, te_y,
+                        cor_local_ratio=0.0,
+                        num_of_sample=NUM_OF_LOCAL,
+                        verbose=True
+                    )
 
-                log_name = 'federated_' + DATASET + '_non_corrupted'
+                    log_name = 'federated_' + DATASET + '_non_corrupted'
 
-                do_FL(DATASET, IID_ITERATION, IID_EPOCHS, BATCH_SIZE,
-                      tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
-                      te_X, te_y, NUM_OF_LOCAL, log_name,
-                      1, 1,
-                      verbose=False)
+                    do_FL(DATASET, IID_ITERATION, IID_EPOCHS, BATCH_SIZE,
+                          tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
+                          te_X, te_y, NUM_OF_LOCAL, log_name,
+                          1, 1,
+                          verbose=False)
 
                 # Corrupted Dataset
                 cur_cnt = 0
@@ -149,21 +152,22 @@ if __name__=='__main__':
                                   verbose=False)
             # Non-IID Dataset
             else:
-                # Non-corrupted
-                tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_corrupted_non_iid_samples(
-                    tr_X, tr_y, te_X, te_y,
-                    cor_local_ratio=0.0,
-                    num_of_sample=NUM_OF_LOCAL,
-                    verbose=True
-                )
+                if NON_IID_NON_COR:
+                    # Non-corrupted
+                    tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_corrupted_non_iid_samples(
+                        tr_X, tr_y, te_X, te_y,
+                        cor_local_ratio=0.0,
+                        num_of_sample=NUM_OF_LOCAL,
+                        verbose=True
+                    )
 
-                log_name = 'federated_' + DATASET + '_non_corrupted'
+                    log_name = 'federated_' + DATASET + '_non_corrupted'
 
-                do_FL(DATASET, NON_IID_ITERATION, NON_IID_EPOCHS, BATCH_SIZE,
-                      tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
-                      te_X, te_y, NUM_OF_LOCAL, log_name,
-                      1, 1,
-                      verbose=False)
+                    do_FL(DATASET, NON_IID_ITERATION, NON_IID_EPOCHS, BATCH_SIZE,
+                          tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
+                          te_X, te_y, NUM_OF_LOCAL, log_name,
+                          1, 1,
+                          verbose=False)
 
                 # Corrupted Dataset
                 cur_cnt = 0

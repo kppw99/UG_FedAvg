@@ -6,6 +6,7 @@ import pandas as pd
 
 from pathlib import Path
 from matplotlib import pyplot
+from scipy.stats import entropy
 
 import torch
 from torch.utils.data import TensorDataset
@@ -250,29 +251,39 @@ def _print_dict(x_train_dict, y_train_dict, x_test_dict, y_test_dict):
     print('# total:', sum, end='\n\n')
 
 
-def load_mnist_data(path='../data/mnist.pkl.gz', torch_tensor=True, pre_train=False):
+def load_mnist_data(path='../data/mnist.pkl.gz', seed=1, torch_tensor=True, pre_train=False):
     data_path = Path(path)
     with gzip.open(data_path, "rb") as f:
         ((x_train, y_train), (x_test, y_test)) = pickle.load(f)
 
     if pre_train:
-        pre_data_size = int(len(x_train) * 0.1)
-        np.random.seed(1)
-        shuffled_indices = np.random.permutation(len(x_train))
+        pre_rate = 0.05
+        train_size = len(x_train)
+        pre_data_size = int(train_size * pre_rate)
+
+        np.random.seed(seed)
+        shuffled_indices = np.random.permutation(train_size)
+
         pre_indices = shuffled_indices[:pre_data_size]
         tr_indices = shuffled_indices[pre_data_size:]
+
         x_pre_train = x_train[pre_indices]
         y_pre_train = y_train[pre_indices]
+
         x_train = x_train[tr_indices]
         y_train = y_train[tr_indices]
 
-    if torch_tensor:
-        x_train, y_train, x_test, y_test = map(torch.tensor, (x_train, y_train, x_test, y_test))
-    print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
-
-    if pre_train:
+        if torch_tensor:
+            x_train, y_train, x_test, y_test, x_pre_train, y_pre_train =\
+                map(torch.tensor, (x_train, y_train, x_test, y_test, x_pre_train, y_pre_train))
+        print(x_train.shape, y_train.shape,
+              x_test.shape, y_test.shape,
+              x_pre_train.shape, y_pre_train.shape)
         return x_train, y_train, x_test, y_test, x_pre_train, y_pre_train
     else:
+        if torch_tensor:
+            x_train, y_train, x_test, y_test = map(torch.tensor, (x_train, y_train, x_test, y_test))
+        print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
         return x_train, y_train, x_test, y_test, None, None
 
 
@@ -358,6 +369,10 @@ def create_dataloader(x_train, y_train, x_test, y_test, batch_size):
         test_data = DataLoader(TensorDataset(x_test, y_test), batch_size=1)
 
     return train_data, test_data
+
+
+def cal_entropy(data):
+    return entropy(data, base=len(data))
 
 
 if __name__=='__main__':
