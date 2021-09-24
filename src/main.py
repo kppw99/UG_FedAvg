@@ -54,14 +54,14 @@ if __name__=='__main__':
     NON_IID_EPOCHS = 15
     NON_IID_ITERATION = 25
     PDIST = 0.9
-    COR_MAJOR_DATA_RATIO = 0.1
+    COR_MAJOR_DATA_RATIO = 0.4
 
     COR_MINOR_LABEL_CNT_LIST = [4, 3, 2]
     COR_MINOR_DATA_RATIO_LIST = [0.6, 0.5, 0.4, 0.3]
     #################################################
 
     # Load data
-    tr_X, tr_y, te_X, te_y = load_mnist_data()
+    tr_X, tr_y, te_X, te_y, pre_X, pre_y = load_mnist_data(pre_train=0.1)
 
     for MODEL in MODEL_LIST:
         # Centralized Learning

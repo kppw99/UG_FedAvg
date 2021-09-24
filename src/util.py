@@ -250,16 +250,30 @@ def _print_dict(x_train_dict, y_train_dict, x_test_dict, y_test_dict):
     print('# total:', sum, end='\n\n')
 
 
-def load_mnist_data(path='../data/mnist.pkl.gz', torch_tensor=True):
+def load_mnist_data(path='../data/mnist.pkl.gz', torch_tensor=True, pre_train=0.0):
     data_path = Path(path)
     with gzip.open(data_path, "rb") as f:
         ((x_train, y_train), (x_test, y_test)) = pickle.load(f)
+
+    if pre_train != 0.0:
+        pre_data_size = int(len(x_train) * pre_train)
+        np.random.seed(1)
+        shuffled_indices = np.random.permutation(len(x_train))
+        pre_indices = shuffled_indices[:pre_data_size]
+        tr_indices = shuffled_indices[pre_data_size:]
+        x_pre_train = x_train[pre_indices]
+        y_pre_train = y_train[pre_indices]
+        x_train = x_train[tr_indices]
+        y_train = y_train[tr_indices]
 
     if torch_tensor:
         x_train, y_train, x_test, y_test = map(torch.tensor, (x_train, y_train, x_test, y_test))
     print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
 
-    return x_train, y_train, x_test, y_test
+    if pre_train != 0.0:
+        return x_train, y_train, x_test, y_test, x_pre_train, y_pre_train
+    else:
+        return x_train, y_train, x_test, y_test, None, None
 
 
 def create_non_iid_samples(x_train, y_train, x_test, y_test,
