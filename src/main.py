@@ -39,8 +39,8 @@ if __name__=='__main__':
     CENTRAL_EPOCHS = 20
 
     COR_MODE_LIST = [1, 2]  # 1, 2
-    MODEL_LIST = ['central', 'federated']   # central, federate
-    DATASET_LIST = ['iid', 'non-iid']   # iid, non-iid
+    MODEL_LIST = ['federated']   # central, federate
+    DATASET_LIST = ['non-iid']   # iid, non-iid
 
     ## IID ##########################################
     IID_EPOCHS = 10
@@ -71,6 +71,12 @@ if __name__=='__main__':
             print('EPOCHS:', CENTRAL_EPOCHS)
             print('BATCH_SIZE:', BATCH_SIZE)
             print('===================================\n')
+
+            if torch.cuda.is_available():
+                tr_X = tr_X.cuda()
+                tr_y = tr_y.cuda()
+                te_X = te_X.cuda()
+                te_y = te_y.cuda()
 
             centralized_model = centralized_learning(
                 tr_X, tr_y, te_X, te_y,
