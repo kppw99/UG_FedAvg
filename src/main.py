@@ -61,7 +61,7 @@ if __name__=='__main__':
     #################################################
 
     # Load data
-    tr_X, tr_y, te_X, te_y, pre_X, pre_y = load_mnist_data(pre_train=0.1)
+    tr_X, tr_y, te_X, te_y, pre_X, pre_y = load_mnist_data(pre_train=True)
 
     for MODEL in MODEL_LIST:
         # Centralized Learning
