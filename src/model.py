@@ -173,7 +173,9 @@ def _train_local_model(model_dict, criterion_dict, optimizer_dict,
 
 def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                               x_train_dict, y_train_dict, x_test_dict, y_test_dict,
-                              number_of_samples, epochs, batch_size, verbose=True):
+                              number_of_samples, epochs, batch_size,
+                              uncert_threshold=0.2,
+                              verbose=True):
     name_of_x_train_sets = list(x_train_dict.keys())
     name_of_y_train_sets = list(y_train_dict.keys())
     name_of_x_test_sets = list(x_test_dict.keys())
@@ -184,7 +186,6 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
     name_of_criterions = list(criterion_dict.keys())
 
     logs = list()
-    uncert_threshold = 0.2
     if verbose is False:
         for i in tqdm(range(number_of_samples), desc='Train local models'):
             train_pre_data = DataLoader(TensorDataset(x_train_dict[name_of_x_train_sets[i]],
@@ -346,7 +347,12 @@ def _create_local_models(number_of_samples=10, lr=0.01, momentum=0.9):
 
 def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_test, y_test,
                        number_of_samples, iteration, epochs, batch_size, log_name, verbose=False):
-    main_model = CNN4FL()
+    # main_model = CNN4FL()
+    if torch.cuda.is_available():
+        main_model = load_model('../data/model/pre_train_model')
+    else:
+        main_model = load_model('../data/model/pre_train_model_no_cuda')
+
     main_criterion = nn.CrossEntropyLoss()
 
     local_model_dict, local_optimizer_dict, local_criterion_dict = _create_local_models(number_of_samples)
@@ -387,7 +393,9 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
 
 
 def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_test, y_test,
-                              number_of_samples, iteration, epochs, batch_size, log_name, verbose=False):
+                              number_of_samples, iteration, epochs, batch_size, log_name,
+                              uncert_threshold=0.2,
+                              verbose=False):
     if torch.cuda.is_available():
         main_model = load_model('../data/model/pre_train_model')
     else:
@@ -411,6 +419,7 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
                                               number_of_samples,
                                               epochs=epochs,
                                               batch_size=batch_size,
+                                              uncert_threshold=uncert_threshold,
                                               verbose=verbose)
 
         main_model = _update_main_model(main_model, local_model_dict)
