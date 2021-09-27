@@ -346,12 +346,16 @@ def _create_local_models(number_of_samples=10, lr=0.01, momentum=0.9):
 
 
 def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_test, y_test,
-                       number_of_samples, iteration, epochs, batch_size, log_name, verbose=False):
-    # main_model = CNN4FL()
-    if torch.cuda.is_available():
-        main_model = load_model('../data/model/pre_train_model')
+                       number_of_samples, iteration, epochs, batch_size, log_name,
+                       pre_train=True,
+                       verbose=False):
+    if pre_train:
+        if torch.cuda.is_available():
+            main_model = load_model('../data/model/pre_train_model')
+        else:
+            main_model = load_model('../data/model/pre_train_model_no_cuda')
     else:
-        main_model = load_model('../data/model/pre_train_model_no_cuda')
+        main_model = CNN4FL()
 
     main_criterion = nn.CrossEntropyLoss()
 
