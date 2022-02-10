@@ -10,6 +10,8 @@ from torch import nn
 import torch.nn.functional as F
 
 
+FL_ALGO = ['origin', 'with_pretrain', 'uncertainty']
+CORRUPTION_MODE = ['label_flipping', 'label_shuffling']
 use_cuda = torch.cuda.is_available()
 
 
@@ -350,7 +352,7 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
                        pre_train=True,
                        verbose=False):
     if pre_train:
-        if torch.cuda.is_available():
+        if use_cuda:
             main_model = load_model('../data/model/pre_train_model')
         else:
             main_model = load_model('../data/model/pre_train_model_no_cuda')
@@ -360,6 +362,9 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
     main_criterion = nn.CrossEntropyLoss()
 
     local_model_dict, local_optimizer_dict, local_criterion_dict = _create_local_models(number_of_samples)
+    if use_cuda:
+        x_test = x_test.cuda()
+        y_test = y_test.cuda()
     _, test_data = create_dataloader(None, None, x_test, y_test, batch_size)
 
     main_logs = list()
@@ -400,7 +405,7 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
                               number_of_samples, iteration, epochs, batch_size, log_name,
                               uncert_threshold=0.2,
                               verbose=False):
-    if torch.cuda.is_available():
+    if use_cuda:
         main_model = load_model('../data/model/pre_train_model')
     else:
         main_model = load_model('../data/model/pre_train_model_no_cuda')
@@ -408,6 +413,9 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
     main_criterion = nn.CrossEntropyLoss()
 
     local_model_dict, local_optimizer_dict, local_criterion_dict = _create_local_models(number_of_samples)
+    if use_cuda:
+        x_test = x_test.cuda()
+        y_test = y_test.cuda()
     _, test_data = create_dataloader(None, None, x_test, y_test, batch_size)
 
     main_logs = list()
@@ -450,9 +458,12 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
 
 
 def create_eval_report(model, x_test, y_test, printable=True):
+    if use_cuda:
+        x_test = x_test.cuda()
+        y_test = y_test.cuda()
     y_pred = model(x_test)
     y_pred = y_pred.argmax(dim=1)
-    report = classification_report(y_test, y_pred, digits=4)
+    report = classification_report(y_test.cpu(), y_pred.cpu(), digits=4)
     if printable:
         print(report)
 
@@ -504,10 +515,10 @@ def compare_local_and_merged_model(main_model, local_model_dict,
         y_test = y_test_dict[y]
 
         y_pred = local_model(x_test).argmax(dim=1)
-        local_accuracy = accuracy_score(y_pred, y_test)
+        local_accuracy = accuracy_score(y_pred.cpu(), y_test.cpu())
 
         y_pred = main_model(x_test).argmax(dim=1)
-        main_accuracy = accuracy_score(y_pred, y_test)
+        main_accuracy = accuracy_score(y_pred.cpu(), y_test.cpu())
 
         accuracy_table.loc[i, 'local'] = 'local ' + str(i)
         accuracy_table.loc[i, 'local_ind_model'] = local_accuracy
@@ -528,3 +539,190 @@ def load_model(path):
     model.load_state_dict(torch.load(path))
 
     return model
+
+
+def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs):
+    if use_cuda:
+        tr_X = tr_X.cuda()
+        tr_y = tr_y.cuda()
+        te_X = te_X.cuda()
+        te_y = te_y.cuda()
+
+    centralized_model = centralized_learning(
+        tr_X, tr_y, te_X, te_y,
+        epochs=epochs,
+        batch_size=batch_size
+    )
+
+    create_eval_report(centralized_model, te_X, te_y)
+    model_name = '../data/model/centralized_model_' + str(epochs) + '_epochs'
+    model_name += time.strftime("_%Y%m%d-%H%M%S")
+    save_model(centralized_model, model_name)
+
+
+def do_FL(_dataset, _iteration, _epochs, _batch_size,
+          _tr_X_dict, _tr_y_dict, _te_X_dict, _te_y_dict, _te_X, _te_y,
+          _num_of_local, _log_name, cur_cnt, total_cnt,
+          uncert=0,
+          uncert_threshold=0.2,
+          verbose=False):
+    print('\n===================================')
+    print('CUDA:', use_cuda)
+    print('MODEL: Federated Learning')
+    print('DATASET: {} ({}/{})'.format(_dataset, cur_cnt, total_cnt))
+    print('ITERATION:', _iteration)
+    print('EPOCHS:', _epochs)
+    print('BATCH_SIZE:', _batch_size)
+    print('LOG_NAME:', _log_name)
+    print('===================================\n')
+
+    if uncert == 2:
+        main_model, local_models = uncert_federated_learning(
+            _tr_X_dict, _tr_y_dict, _te_X_dict, _te_y_dict, _te_X, _te_y,
+            _num_of_local,
+            iteration=_iteration,
+            epochs=_epochs,
+            batch_size=_batch_size,
+            log_name=_log_name,
+            uncert_threshold=uncert_threshold,
+            verbose=verbose
+        )
+    elif uncert == 1:
+        main_model, local_models = federated_learning(
+            _tr_X_dict, _tr_y_dict, _te_X_dict, _te_y_dict, _te_X, _te_y,
+            _num_of_local,
+            iteration=_iteration,
+            epochs=_epochs,
+            batch_size=_batch_size,
+            log_name=_log_name,
+            pre_train=True,
+            verbose=verbose
+        )
+    else:
+        main_model, local_models = federated_learning(
+            _tr_X_dict, _tr_y_dict, _te_X_dict, _te_y_dict, _te_X, _te_y,
+            _num_of_local,
+            iteration=_iteration,
+            epochs=_epochs,
+            batch_size=_batch_size,
+            log_name=_log_name,
+            pre_train=False,
+            verbose=verbose
+        )
+
+    create_eval_report(main_model, _te_X, _te_y)
+    compare_local_and_merged_model(main_model, local_models,
+                                   _te_X_dict, _te_y_dict)
+    model_name = '../data/model/' + _log_name + '_main_model'
+    model_name += time.strftime("_%Y%m%d-%H%M%S")
+    save_model(main_model, model_name)
+    # Release variables
+    del _tr_X_dict
+    del _tr_y_dict
+    del _te_X_dict
+    del _te_y_dict
+    del _te_X
+    del _te_y
+
+
+def do_non_corruption(tr_X, tr_y, te_X, te_y, batch_size, iteration, epochs, local_num, uncert_fedavg, mode='iid'):
+    if mode == 'iid':
+        tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_corrupted_iid_samples(
+            tr_X, tr_y, te_X, te_y,
+            cor_local_ratio=0.0,
+            num_of_sample=local_num,
+            verbose=True
+        )
+    else:
+        tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_corrupted_non_iid_samples(
+            tr_X, tr_y, te_X, te_y,
+            cor_local_ratio=0.0,
+            num_of_sample=local_num,
+            verbose=True
+        )
+
+    log_name = 'federated_' + mode + '_' + FL_ALGO[uncert_fedavg] + '_non_corrupted'
+
+    do_FL(mode, iteration, epochs, batch_size,
+          tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
+          te_X, te_y, local_num, log_name,
+          1, 1,
+          uncert=uncert_fedavg,
+          verbose=False)
+
+    # Release variables
+    del tr_X_dict
+    del tr_y_dict
+    del te_X_dict
+    del te_y_dict
+
+
+def do_iid_corruption(total_cnt, cur_cnt,
+                      tr_X, tr_y, te_X, te_y,
+                      batch_size, iteration, epochs, local_num, uncert_fedavg,
+                      cor_local_ratio, cor_label_ratio, cor_data_ratio, cor_mode):
+    tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_corrupted_iid_samples(
+        tr_X, tr_y, te_X, te_y,
+        cor_local_ratio=cor_local_ratio,
+        cor_label_ratio=cor_label_ratio,
+        cor_data_ratio=cor_data_ratio,
+        mode=cor_mode,
+        num_of_sample=local_num,
+        verbose=True
+    )
+
+    log_name = 'federated_' + 'iid' + '_'
+    log_name += FL_ALGO[uncert_fedavg] + '_'
+    log_name += str(int(cor_local_ratio * 10)) + '_cor_local_'
+    log_name += str(int(cor_label_ratio * 100)) + '_cor_label_'
+    log_name += CORRUPTION_MODE[cor_mode]
+
+    do_FL('iid', iteration, epochs, batch_size,
+          tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
+          te_X, te_y, local_num, log_name,
+          cur_cnt, total_cnt,
+          uncert=uncert_fedavg,
+          verbose=False)
+    # Release variables
+    del tr_X_dict
+    del tr_y_dict
+    del te_X_dict
+    del te_y_dict
+
+
+def do_non_iid_corruption(total_cnt, cur_cnt,
+                          tr_X, tr_y, te_X, te_y,
+                          batch_size, iteration, epochs, local_num, uncert_fedavg,
+                          cor_local_ratio, cor_minor_label_cnt, cor_major_data_ratio, cor_minor_data_ratio,
+                          pdist, cor_mode):
+    tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_corrupted_non_iid_samples(
+        tr_X, tr_y, te_X, te_y,
+        cor_local_ratio=cor_local_ratio,
+        cor_minor_label_cnt=cor_minor_label_cnt,
+        cor_major_data_ratio=cor_major_data_ratio,
+        cor_minor_data_ratio=cor_minor_data_ratio,
+        mode=cor_mode,
+        pdist=pdist,
+        num_of_sample=local_num,
+        verbose=True
+    )
+
+    log_name = 'federated_' + 'non-iid' + '_'
+    log_name += FL_ALGO[uncert_fedavg] + '_'
+    log_name += str(int(cor_minor_label_cnt)) + '_cor_minor_label_'
+    log_name += str(int(cor_minor_data_ratio * 100)) + '_cor_minor_data_'
+    log_name += CORRUPTION_MODE[cor_mode]
+
+
+    do_FL('non-iid', iteration, epochs, batch_size,
+          tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
+          te_X, te_y, local_num, log_name,
+          cur_cnt, total_cnt,
+          uncert=uncert_fedavg,
+          uncert_threshold=0.1,
+          verbose=False)
+    # Release variables
+    del tr_X_dict
+    del tr_y_dict
+    del te_X_dict
+    del te_y_dict

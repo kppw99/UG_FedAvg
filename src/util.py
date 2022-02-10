@@ -95,9 +95,13 @@ def _create_subsamples(sample_dict, x_data, y_data, x_name, y_name):
         indices = np.sort(np.array(sample_dict[sample_name]['index']))
 
         x_info = x_data[indices, :]
+        if torch.cuda.is_available():
+            x_info = x_info.cuda()
         x_data_dict.update({xname: x_info})
 
         y_info = y_data[indices]
+        if torch.cuda.is_available():
+            y_info = y_info.cuda()
         y_data_dict.update({yname: y_info})
 
     return x_data_dict, y_data_dict
@@ -133,6 +137,8 @@ def _create_corrupted_subsamples(sample_dict, x_data, y_data, x_name, y_name,
         indices = np.sort(np.array(sample_dict[sample_name]['index']))
 
         x_info = x_data[indices, :]
+        if torch.cuda.is_available():
+            x_info = x_info.cuda()
         x_data_dict.update({xname: x_info})
 
         y_info = y_data[indices]
@@ -154,6 +160,8 @@ def _create_corrupted_subsamples(sample_dict, x_data, y_data, x_name, y_name,
                         temp_x.difference_update([ori_val])
                         y_info[i] = random.sample(temp_x, 1)[0]
 
+        if torch.cuda.is_available():
+            y_info = y_info.cuda()
         y_data_dict.update({yname: y_info})
 
     return x_data_dict, y_data_dict
@@ -180,6 +188,8 @@ def _create_corrupted_subsamples2(sample_dict, x_data, y_data, x_name, y_name,
         indices = np.sort(np.array(sample_dict[sample_name]['index']))
 
         x_info = x_data[indices, :]
+        if torch.cuda.is_available():
+            x_info = x_info.cuda()
         x_data_dict.update({xname: x_info})
 
         y_info = y_data[indices]
@@ -221,6 +231,8 @@ def _create_corrupted_subsamples2(sample_dict, x_data, y_data, x_name, y_name,
                         temp_x.difference_update([ori_val])
                         y_info[i] = random.sample(temp_x, 1)[0]
 
+        if torch.cuda.is_available():
+            y_info = y_info.cuda()
         y_data_dict.update({yname: y_info})
 
     return x_data_dict, y_data_dict
