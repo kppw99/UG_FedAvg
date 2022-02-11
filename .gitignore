@@ -138,3 +138,4 @@ data/plot/*
 .DS_Store
 data/.DS_Store
 src/.DS_Store
+src/test.py
