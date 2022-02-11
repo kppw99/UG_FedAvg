@@ -7,6 +7,7 @@ import pandas as pd
 from pathlib import Path
 from matplotlib import pyplot
 from scipy.stats import entropy
+import matplotlib.pyplot as plt
 
 import torch
 from torch.utils.data import TensorDataset
@@ -162,6 +163,64 @@ def _create_corrupted_subsamples(sample_dict, x_data, y_data, x_name, y_name,
 
         if torch.cuda.is_available():
             y_info = y_info.cuda()
+        y_data_dict.update({yname: y_info})
+
+    return x_data_dict, y_data_dict
+
+
+def _create_backdoor_subsamples(sample_dict, x_data, y_data, x_name, y_name, target_label,
+                                cor_local_ratio=1.0, cor_label_ratio=0.2, cor_data_ratio=0.5):
+    x_data_dict = dict()
+    y_data_dict = dict()
+
+    # make corrupted info
+    num_of_local = len(sample_dict)
+    num_of_label = len(set(y_data.tolist()))
+    cor_local_idx = random.sample(range(0, num_of_local), int(num_of_local * cor_local_ratio))
+    while(True):
+        cor_label_idx = random.sample(range(0, num_of_label), int(num_of_label * cor_label_ratio))
+        if not target_label in cor_label_idx:
+            break
+    temp = set(y_data.tolist())
+    temp.difference_update(cor_label_idx)
+
+    print('[*] Corrupted Label')
+    print(cor_label_idx, '->', target_label)
+    print('')
+
+    # len(sample_dict) is a number of client
+    for i in range(len(sample_dict)):
+        xname = x_name + str(i)
+        yname = y_name + str(i)
+        sample_name = "sample" + str(i)
+
+        indices = np.sort(np.array(sample_dict[sample_name]['index']))
+
+        x_info = x_data[indices, :]
+        y_info = y_data[indices]
+
+        if i in cor_local_idx:
+            for j in cor_label_idx:
+                temp_dices = np.where(y_info == j)[0]
+                cor_data_len = int(len(temp_dices) * cor_data_ratio)
+                corrupted_idx = random.sample(list(temp_dices), cor_data_len)
+
+                y_info[corrupted_idx] = target_label
+                for idx in corrupted_idx:
+                    size = 5
+                    start_idx = 1
+                    temp_x = x_info[idx].reshape(28, 28)
+                    # trigger pattern (plus)
+                    for ii in range(start_idx, start_idx+size):
+                        temp_x[ii][(start_idx+size)//2] = 1.0   # vertical line
+                        temp_x[(start_idx+size)//2][ii] = 1.0   # horizontal line
+                    x_info[idx] = temp_x.reshape(1, 28, 28)
+                    # plt.imshow(x_info[idx].reshape(28, 28))
+                    # plt.show()
+        if torch.cuda.is_available():
+            x_info = x_info.cuda()
+            y_info = y_info.cuda()
+        x_data_dict.update({xname: x_info})
         y_data_dict.update({yname: y_info})
 
     return x_data_dict, y_data_dict
@@ -360,6 +419,25 @@ def create_corrupted_iid_samples(x_train, y_train, x_test, y_test,
                                                               'x_train', 'y_train',
                                                               cor_local_ratio, cor_label_ratio,
                                                               cor_data_ratio, mode)
+
+    sample_dict_test = _get_iid_subsamples_indices(y_test, num_of_sample, seed)
+    x_test_dict, y_test_dict = _create_subsamples(sample_dict_test, x_test, y_test,
+                                                  'x_test', 'y_test')
+
+    if verbose:
+        _print_dict(x_train_dict, y_train_dict, x_test_dict, y_test_dict)
+
+    return x_train_dict, y_train_dict, x_test_dict, y_test_dict
+
+
+def create_backdoor_iid_samples(x_train, y_train, x_test, y_test,
+                                 cor_local_ratio=1.0, cor_label_ratio=0.2, cor_data_ratio=0.5, target_label=1,
+                                 num_of_sample=10, seed=1, verbose=True):
+    sample_dict_train = _get_iid_subsamples_indices(y_train, num_of_sample, seed)
+    x_train_dict, y_train_dict = _create_backdoor_subsamples(sample_dict_train, x_train, y_train,
+                                                              'x_train', 'y_train', target_label,
+                                                              cor_local_ratio, cor_label_ratio,
+                                                              cor_data_ratio)
 
     sample_dict_test = _get_iid_subsamples_indices(y_test, num_of_sample, seed)
     x_test_dict, y_test_dict = _create_subsamples(sample_dict_test, x_test, y_test,
