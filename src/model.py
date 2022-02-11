@@ -690,6 +690,38 @@ def do_iid_corruption(total_cnt, cur_cnt,
     del te_y_dict
 
 
+def do_iid_backdoor(total_cnt, cur_cnt,
+                    tr_X, tr_y, te_X, te_y,
+                    batch_size, iteration, epochs, local_num, uncert_fedavg,
+                    cor_local_ratio, cor_label_ratio, cor_data_ratio, target_label):
+    tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_backdoor_iid_samples(
+        tr_X, tr_y, te_X, te_y, target_label=target_label,
+        cor_local_ratio=cor_local_ratio,
+        cor_label_ratio=cor_label_ratio,
+        cor_data_ratio=cor_data_ratio,
+        num_of_sample=local_num,
+        verbose=True
+    )
+
+    log_name = 'federated_' + 'iid' + '_'
+    log_name += FL_ALGO[uncert_fedavg] + '_'
+    log_name += str(int(cor_local_ratio * 10)) + '_cor_local_'
+    log_name += str(int(cor_label_ratio * 100)) + '_cor_label_'
+    log_name += 'backdoor'
+
+    do_FL('iid', iteration, epochs, batch_size,
+          tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
+          te_X, te_y, local_num, log_name,
+          cur_cnt, total_cnt,
+          uncert=uncert_fedavg,
+          verbose=False)
+    # Release variables
+    del tr_X_dict
+    del tr_y_dict
+    del te_X_dict
+    del te_y_dict
+
+
 def do_non_iid_corruption(total_cnt, cur_cnt,
                           tr_X, tr_y, te_X, te_y,
                           batch_size, iteration, epochs, local_num, uncert_fedavg,
