@@ -108,6 +108,18 @@ def _create_subsamples(sample_dict, x_data, y_data, x_name, y_name):
     return x_data_dict, y_data_dict
 
 
+def _add_bd_pattern(x, start_idx=1, size=5, show=False):
+    temp_x = x.reshape(28, 28)
+    # trigger pattern (plus)
+    for i in range(start_idx, start_idx + size):
+        temp_x[i][(start_idx + size) // 2] = 1.0  # vertical line
+        temp_x[(start_idx + size) // 2][i] = 1.0  # horizontal line
+    if show is True:
+        plt.imshow(temp_x)
+        plt.show()
+    return temp_x.reshape(1, 28, 28)
+
+
 def _create_corrupted_subsamples(sample_dict, x_data, y_data, x_name, y_name,
                                  cor_local_ratio=1.0, cor_label_ratio=0.2, cor_data_ratio=0.5, mode=1):
     x_data_dict = dict()
@@ -177,18 +189,6 @@ def _create_backdoor_subsamples(sample_dict, x_data, y_data, x_name, y_name,
     num_of_local = len(sample_dict)
     cor_local_idx = random.sample(range(0, num_of_local), int(num_of_local * cor_local_ratio))
 
-    # num_of_label = len(set(y_data.tolist()))
-    # while(True):
-    #     cor_label_idx = random.sample(range(0, num_of_label), int(num_of_label * cor_label_ratio))
-    #     if not target_label in cor_label_idx:
-    #         break
-    # temp = set(y_data.tolist())
-    # temp.difference_update(cor_label_idx)
-    #
-    # print('[*] Corrupted Label')
-    # print(cor_label_idx, '->', target_label)
-    # print('')
-
     # len(sample_dict) is a number of client
     for i in range(len(sample_dict)):
         xname = x_name + str(i)
@@ -208,22 +208,71 @@ def _create_backdoor_subsamples(sample_dict, x_data, y_data, x_name, y_name,
 
                 y_info[corrupted_idx] = target_label
                 for idx in corrupted_idx:
-                    size = 5
-                    start_idx = 1
-                    temp_x = x_info[idx].reshape(28, 28)
-                    # trigger pattern (plus)
-                    for ii in range(start_idx, start_idx+size):
-                        temp_x[ii][(start_idx+size)//2] = 1.0   # vertical line
-                        temp_x[(start_idx+size)//2][ii] = 1.0   # horizontal line
-                    x_info[idx] = temp_x.reshape(1, 28, 28)
-                    # plt.imshow(x_info[idx].reshape(28, 28))
-                    # plt.show()
+                    x_info[idx] = _add_bd_pattern(x_info[idx])
         if torch.cuda.is_available():
             x_info = x_info.cuda()
             y_info = y_info.cuda()
         x_data_dict.update({xname: x_info})
         y_data_dict.update({yname: y_info})
 
+    return x_data_dict, y_data_dict
+
+
+def _create_backdoor_subsamples2(sample_dict, x_data, y_data, x_name, y_name,
+                                cor_local_idx, cor_label_idx, target_label,
+                                cor_major_data_ratio=0.2,
+                                cor_minor_data_ratio=0.5):
+    x_data_dict = dict()
+    y_data_dict = dict()
+
+    num_of_label = len(set(y_data.tolist()))
+
+    major_cnt = 0
+    minor_cnt = 0
+    for i in range(len(sample_dict)):  ### len(sample_dict)= number of samples
+        xname = x_name + str(i)
+        yname = y_name + str(i)
+        sample_name = "sample" + str(i)
+
+        indices = np.sort(np.array(sample_dict[sample_name]['index']))
+
+        x_info = x_data[indices, :]
+        y_info = y_data[indices]
+
+        temp_label_idx = cor_label_idx.copy()
+        if i in cor_local_idx:
+            cor_major_label_idx = list()
+            cor_major_label_idx.append(i)
+            cor_major_label_idx.append((i + 5) % num_of_label)
+            for j in cor_major_label_idx:
+                if j in temp_label_idx:
+                    temp_dices = np.where(y_info == j)[0]
+                    cor_data_len = int(len(temp_dices) * cor_major_data_ratio)
+                    corrupted_idx = random.sample(list(temp_dices), cor_data_len)
+                    y_info[corrupted_idx] = target_label
+                    for idx in corrupted_idx:
+                        x_info[idx] = _add_bd_pattern(x_info[idx])
+                        major_cnt += 1
+                    temp_label_idx.remove(j)
+
+            for j in temp_label_idx:
+                temp_dices = np.where(y_info == j)[0]
+                cor_data_len = int(len(temp_dices) * cor_minor_data_ratio)
+                corrupted_idx = random.sample(list(temp_dices), cor_data_len)
+                y_info[corrupted_idx] = target_label
+                for idx in corrupted_idx:
+                    x_info[idx] = _add_bd_pattern(x_info[idx])
+                    minor_cnt += 1
+
+        if torch.cuda.is_available():
+            x_info = x_info.cuda()
+            y_info = y_info.cuda()
+        x_data_dict.update({xname: x_info})
+        y_data_dict.update({yname: y_info})
+
+    print('backdoor cnt:', major_cnt, minor_cnt)
+    print('cor_label_idx:', cor_label_idx)
+    print('')
     return x_data_dict, y_data_dict
 
 
@@ -408,6 +457,44 @@ def create_corrupted_non_iid_samples(x_train, y_train, x_test, y_test,
     return x_train_dict, y_train_dict, x_test_dict, y_test_dict
 
 
+def create_backdoor_non_iid_samples(x_train, y_train, x_test, y_test, target_label,
+                                    cor_local_ratio=1.0,
+                                    cor_minor_label_cnt=4,
+                                    cor_major_data_ratio=0.2,
+                                    cor_minor_data_ratio=0.5,
+                                    num_of_sample=10, pdist=0.6, seed=1, verbose=True):
+    sample_dict_train = _get_non_iid_subsamples_indices(y_train, num_of_sample, pdist, seed)
+
+    num_of_local = len(sample_dict_train)
+    cor_local_idx = random.sample(range(0, num_of_local), int(num_of_local * cor_local_ratio))
+
+    num_of_label = len(set(y_train.tolist()))
+    while(True):
+        cor_label_idx = random.sample(range(0, num_of_label), cor_minor_label_cnt)
+        if not target_label in cor_label_idx:
+            break
+
+    print('[*] Corrupted Label')
+    print(cor_label_idx, '->', target_label)
+    print('')
+
+    x_train_dict, y_train_dict = _create_backdoor_subsamples2(sample_dict_train, x_train, y_train, 'x_train', 'y_train',
+                                                              cor_local_idx, cor_label_idx, target_label,
+                                                              cor_major_data_ratio, cor_minor_data_ratio)
+
+    sample_dict_test = _get_non_iid_subsamples_indices(y_test, num_of_sample, pdist, seed)
+    x_test_dict, y_test_dict = _create_subsamples(sample_dict_test, x_test, y_test, 'x_test', 'y_test')
+
+    x_val_dict, y_val_dict = _create_backdoor_subsamples2(sample_dict_test, x_test, y_test, 'x_val', 'y_val',
+                                                          cor_local_idx, cor_label_idx, target_label,
+                                                          cor_major_data_ratio, cor_minor_data_ratio)
+
+    if verbose:
+        _print_dict(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_val_dict, y_val_dict)
+
+    return x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_val_dict, y_val_dict
+
+
 def create_iid_samples(x_train, y_train, x_test, y_test, num_of_sample=10, seed=1, verbose=True):
     sample_dict_train = _get_iid_subsamples_indices(y_train, num_of_sample, seed)
     x_train_dict, y_train_dict = _create_subsamples(sample_dict_train, x_train, y_train,
@@ -452,8 +539,8 @@ def create_backdoor_iid_samples(x_train, y_train, x_test, y_test,
         cor_label_idx = random.sample(range(0, num_of_label), int(num_of_label * cor_label_ratio))
         if not target_label in cor_label_idx:
             break
-    temp = set(y_train.tolist())
-    temp.difference_update(cor_label_idx)
+    # temp = set(y_train.tolist())
+    # temp.difference_update(cor_label_idx)
 
     print('[*] Corrupted Label')
     print(cor_label_idx, '->', target_label)
@@ -491,6 +578,25 @@ def create_dataloader(x_train, y_train, x_test, y_test, batch_size):
 
 def cal_entropy(data):
     return entropy(data, base=len(data))
+
+
+def cal_asr(model, test_y_dict, valid_X_dict, valid_y_dict, target_label):
+    s_cnt = 0
+    t_cnt = 0
+    for i, (y, v_x, v_y) in enumerate(zip(test_y_dict, valid_X_dict, valid_y_dict)):
+        te_y = test_y_dict[y]
+        val_X = valid_X_dict[v_x]
+        val_y = valid_y_dict[v_y]
+
+        pred_val_y = model(val_X).argmax(dim=1)
+        for idx in range(len(te_y)):
+            if te_y[idx] != val_y[idx]:
+                if int(pred_val_y[idx]) == target_label:
+                    s_cnt += 1
+                t_cnt += 1
+    asr = float(float(s_cnt) / float(t_cnt))
+    print('\n- Attack Success Rate: {} ({}/{})'.format(asr, s_cnt, t_cnt))
+    return asr
 
 
 if __name__=='__main__':

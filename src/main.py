@@ -44,11 +44,11 @@ if __name__=='__main__':
                             for COR_MODE in COR_MODE_LIST:
                                 print('\n===================================')
                                 print('CUDA:', torch.cuda.is_available())
-                                print('UNCERT_FEDAVG:', UNCERT_FEDAVG)
+                                print('UNCERT_FEDAVG:', FL_ALGO[UNCERT_FEDAVG])
                                 print('MODEL:', MODEL)
                                 print('DATASET:', DATASET)
                                 print('NUM_OF_LOCAL:', NUM_OF_LOCAL)
-                                print('COR_MODE:', COR_MODE)
+                                print('COR_MODE:', CORRUPTION_MODE[COR_MODE])
                                 print('COR_LOCAL_RATIO:', COR_LOCAL_RATIO)
                                 print('COR_LABEL_RATIO:', COR_LABEL_RATIO)
                                 print('COR_DATA_RATIO:', COR_DATA_RATIO)
@@ -76,11 +76,11 @@ if __name__=='__main__':
                             for COR_MODE in COR_MODE_LIST:
                                 print('\n===================================')
                                 print('CUDA:', torch.cuda.is_available())
-                                print('UNCERT_FEDAVG:', UNCERT_FEDAVG)
+                                print('UNCERT_FEDAVG:', FL_ALGO[UNCERT_FEDAVG])
                                 print('MODEL:', MODEL)
                                 print('DATASET:', DATASET)
                                 print('NUM_OF_LOCAL:', NUM_OF_LOCAL)
-                                print('COR_MODE:', COR_MODE)
+                                print('COR_MODE:', CORRUPTION_MODE[COR_MODE])
                                 print('PDIST:', PDIST)
                                 print('COR_MAJOR_DATA_RATIO:', COR_MAJOR_DATA_RATIO)
                                 print('COR_MINOR_LABEL_CNT:', COR_MINOR_LABEL_CNT)
@@ -89,7 +89,11 @@ if __name__=='__main__':
 
                                 cur_non_iid_cnt += 1
                                 if COR_MODE == 2:   # backdoor attack
-                                    pass
+                                    do_non_iid_backdoor(total_non_iid_cnt, cur_non_iid_cnt, tr_X, tr_y, te_X, te_y,
+                                                        BATCH_SIZE, NON_IID_ITERATION, NON_IID_EPOCHS,
+                                                        NUM_OF_LOCAL, UNCERT_FEDAVG,
+                                                        COR_LOCAL_RATIO, COR_MINOR_LABEL_CNT, COR_MAJOR_DATA_RATIO,
+                                                        COR_MINOR_DATA_RATIO, PDIST, TARGET_LABEL)
                                 else:
                                     do_non_iid_corruption(total_non_iid_cnt, cur_non_iid_cnt, tr_X, tr_y, te_X, te_y,
                                                           BATCH_SIZE, NON_IID_ITERATION, NON_IID_EPOCHS,
