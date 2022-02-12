@@ -624,6 +624,8 @@ def do_FL(_dataset, _iteration, _epochs, _batch_size,
     del _te_X
     del _te_y
 
+    return main_model
+
 
 def do_non_corruption(tr_X, tr_y, te_X, te_y, batch_size, iteration, epochs, local_num, uncert_fedavg, mode='iid'):
     if mode == 'iid':
@@ -694,7 +696,7 @@ def do_iid_backdoor(total_cnt, cur_cnt,
                     tr_X, tr_y, te_X, te_y,
                     batch_size, iteration, epochs, local_num, uncert_fedavg,
                     cor_local_ratio, cor_label_ratio, cor_data_ratio, target_label):
-    tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_backdoor_iid_samples(
+    tr_X_dict, tr_y_dict, te_X_dict, te_y_dict, val_X_dict, val_y_dict = create_backdoor_iid_samples(
         tr_X, tr_y, te_X, te_y, target_label=target_label,
         cor_local_ratio=cor_local_ratio,
         cor_label_ratio=cor_label_ratio,
@@ -709,17 +711,36 @@ def do_iid_backdoor(total_cnt, cur_cnt,
     log_name += str(int(cor_label_ratio * 100)) + '_cor_label_'
     log_name += 'backdoor'
 
-    do_FL('iid', iteration, epochs, batch_size,
-          tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
-          te_X, te_y, local_num, log_name,
-          cur_cnt, total_cnt,
-          uncert=uncert_fedavg,
-          verbose=False)
+    main_model = do_FL('iid', iteration, epochs, batch_size,
+                       tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
+                       te_X, te_y, local_num, log_name,
+                       cur_cnt, total_cnt,
+                       uncert=uncert_fedavg,
+                       verbose=False)
+
+    s_cnt = 0
+    t_cnt = 0
+    for i, (y, v_x, v_y) in enumerate(zip(te_y_dict, val_X_dict, val_y_dict)):
+        te_y = te_y_dict[y]
+        val_X = val_X_dict[v_x]
+        val_y = val_y_dict[v_y]
+
+        pred_val_y = main_model(val_X).argmax(dim=1)
+        for idx in range(len(te_y)):
+            if te_y[idx] != val_y[idx]:
+                if int(pred_val_y[idx]) == target_label:
+                    s_cnt += 1
+                t_cnt += 1
+    asr = float(float(s_cnt) / float(t_cnt))
+    print('Attack Success Rate:', asr)
+
     # Release variables
     del tr_X_dict
     del tr_y_dict
     del te_X_dict
     del te_y_dict
+    del val_X_dict
+    del val_y_dict
 
 
 def do_non_iid_corruption(total_cnt, cur_cnt,

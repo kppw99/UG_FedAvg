@@ -168,25 +168,26 @@ def _create_corrupted_subsamples(sample_dict, x_data, y_data, x_name, y_name,
     return x_data_dict, y_data_dict
 
 
-def _create_backdoor_subsamples(sample_dict, x_data, y_data, x_name, y_name, target_label,
-                                cor_local_ratio=1.0, cor_label_ratio=0.2, cor_data_ratio=0.5):
+def _create_backdoor_subsamples(sample_dict, x_data, y_data, x_name, y_name,
+                                cor_label_idx, target_label, cor_local_ratio=1.0, cor_data_ratio=0.5):
     x_data_dict = dict()
     y_data_dict = dict()
 
     # make corrupted info
     num_of_local = len(sample_dict)
-    num_of_label = len(set(y_data.tolist()))
     cor_local_idx = random.sample(range(0, num_of_local), int(num_of_local * cor_local_ratio))
-    while(True):
-        cor_label_idx = random.sample(range(0, num_of_label), int(num_of_label * cor_label_ratio))
-        if not target_label in cor_label_idx:
-            break
-    temp = set(y_data.tolist())
-    temp.difference_update(cor_label_idx)
 
-    print('[*] Corrupted Label')
-    print(cor_label_idx, '->', target_label)
-    print('')
+    # num_of_label = len(set(y_data.tolist()))
+    # while(True):
+    #     cor_label_idx = random.sample(range(0, num_of_label), int(num_of_label * cor_label_ratio))
+    #     if not target_label in cor_label_idx:
+    #         break
+    # temp = set(y_data.tolist())
+    # temp.difference_update(cor_label_idx)
+    #
+    # print('[*] Corrupted Label')
+    # print(cor_label_idx, '->', target_label)
+    # print('')
 
     # len(sample_dict) is a number of client
     for i in range(len(sample_dict)):
@@ -297,7 +298,7 @@ def _create_corrupted_subsamples2(sample_dict, x_data, y_data, x_name, y_name,
     return x_data_dict, y_data_dict
 
 
-def _print_dict(x_train_dict, y_train_dict, x_test_dict, y_test_dict):
+def _print_dict(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_val_dict=None, y_val_dict=None):
     sum = 0
     print('[*] Train Dataset (x, y)')
     for idx, (x_key, y_key) in enumerate(zip(x_train_dict, y_train_dict)):
@@ -318,8 +319,19 @@ def _print_dict(x_train_dict, y_train_dict, x_test_dict, y_test_dict):
         for i in range(10):
             print(y_test_dict[y_key].tolist().count(i), end=' ')
         print('')
-
     print('# total:', sum, end='\n\n')
+
+    if x_val_dict is not None:
+        sum = 0
+        print('[*] Valid Dataset (x, y)')
+        for idx, (x_key, y_key) in enumerate(zip(x_val_dict, y_val_dict)):
+            sum += len(x_val_dict[x_key])
+            print('- sample{}: {}, {}'.format(idx, len(x_val_dict[x_key]), len(y_val_dict[y_key])))
+            print(': ', end='')
+            for i in range(10):
+                print(y_val_dict[y_key].tolist().count(i), end=' ')
+            print('')
+        print('# total:', sum, end='\n\n')
 
 
 def load_mnist_data(path='../data/mnist.pkl.gz', seed=1, torch_tensor=True, pre_train=False):
@@ -434,19 +446,35 @@ def create_backdoor_iid_samples(x_train, y_train, x_test, y_test,
                                  cor_local_ratio=1.0, cor_label_ratio=0.2, cor_data_ratio=0.5, target_label=1,
                                  num_of_sample=10, seed=1, verbose=True):
     sample_dict_train = _get_iid_subsamples_indices(y_train, num_of_sample, seed)
-    x_train_dict, y_train_dict = _create_backdoor_subsamples(sample_dict_train, x_train, y_train,
-                                                              'x_train', 'y_train', target_label,
-                                                              cor_local_ratio, cor_label_ratio,
-                                                              cor_data_ratio)
+
+    num_of_label = len(set(y_train.tolist()))
+    while(True):
+        cor_label_idx = random.sample(range(0, num_of_label), int(num_of_label * cor_label_ratio))
+        if not target_label in cor_label_idx:
+            break
+    temp = set(y_train.tolist())
+    temp.difference_update(cor_label_idx)
+
+    print('[*] Corrupted Label')
+    print(cor_label_idx, '->', target_label)
+    print('')
+
+    x_train_dict, y_train_dict = _create_backdoor_subsamples(sample_dict_train, x_train, y_train, 'x_train', 'y_train',
+                                                             cor_label_idx, target_label,
+                                                             cor_local_ratio, cor_data_ratio)
 
     sample_dict_test = _get_iid_subsamples_indices(y_test, num_of_sample, seed)
     x_test_dict, y_test_dict = _create_subsamples(sample_dict_test, x_test, y_test,
                                                   'x_test', 'y_test')
 
-    if verbose:
-        _print_dict(x_train_dict, y_train_dict, x_test_dict, y_test_dict)
+    x_val_dict, y_val_dict = _create_backdoor_subsamples(sample_dict_test, x_test, y_test, 'x_val', 'y_val',
+                                                         cor_label_idx, target_label,
+                                                         cor_local_ratio, cor_data_ratio)
 
-    return x_train_dict, y_train_dict, x_test_dict, y_test_dict
+    if verbose:
+        _print_dict(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_val_dict, y_val_dict)
+
+    return x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_val_dict, y_val_dict
 
 
 def create_dataloader(x_train, y_train, x_test, y_test, batch_size):

@@ -88,8 +88,11 @@ if __name__=='__main__':
                                 print('===================================\n')
 
                                 cur_non_iid_cnt += 1
-                                do_non_iid_corruption(total_non_iid_cnt, cur_non_iid_cnt, tr_X, tr_y, te_X, te_y,
-                                                      BATCH_SIZE, NON_IID_ITERATION, NON_IID_EPOCHS,
-                                                      NUM_OF_LOCAL, UNCERT_FEDAVG,
-                                                      COR_LOCAL_RATIO, COR_MINOR_LABEL_CNT, COR_MAJOR_DATA_RATIO,
-                                                      COR_MINOR_DATA_RATIO, PDIST, COR_MODE)
+                                if COR_MODE == 2:   # backdoor attack
+                                    pass
+                                else:
+                                    do_non_iid_corruption(total_non_iid_cnt, cur_non_iid_cnt, tr_X, tr_y, te_X, te_y,
+                                                          BATCH_SIZE, NON_IID_ITERATION, NON_IID_EPOCHS,
+                                                          NUM_OF_LOCAL, UNCERT_FEDAVG,
+                                                          COR_LOCAL_RATIO, COR_MINOR_LABEL_CNT, COR_MAJOR_DATA_RATIO,
+                                                          COR_MINOR_DATA_RATIO, PDIST, COR_MODE)
