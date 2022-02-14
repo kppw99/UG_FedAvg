@@ -39,6 +39,7 @@ if __name__=='__main__':
                         do_non_corruption(tr_X, tr_y, te_X, te_y,
                                           BATCH_SIZE, IID_ITERATION, IID_EPOCHS, NUM_OF_LOCAL, UNCERT_FEDAVG,
                                           DIST, DATASET)
+                        break
                     # Corrupted Dataset
                     for COR_LABEL_RATIO in COR_LABEL_RATIO_LIST:
                         for COR_DATA_RATIO in COR_DATA_RATIO_LIST:
@@ -74,6 +75,7 @@ if __name__=='__main__':
                         do_non_corruption(tr_X, tr_y, te_X, te_y,
                                           BATCH_SIZE, NON_IID_ITERATION, NON_IID_EPOCHS, NUM_OF_LOCAL, UNCERT_FEDAVG,
                                           DIST, DATASET)
+                        break
                     # Corrupted Dataset
                     for COR_MINOR_LABEL_CNT in COR_MINOR_LABEL_CNT_LIST:
                         for COR_MINOR_DATA_RATIO in COR_MINOR_DATA_RATIO_LIST:

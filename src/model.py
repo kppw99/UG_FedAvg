@@ -644,7 +644,8 @@ def do_FL(_dataset, _iteration, _epochs, _batch_size,
     print('\n===================================')
     print('CUDA:', use_cuda)
     print('MODEL: Federated Learning')
-    print('DATASET: {} ({}/{})'.format(_dataset, cur_cnt, total_cnt))
+    print('DIST: {} ({}/{})'.format(_dataset, cur_cnt, total_cnt))
+    print('DATASET:', dataset)
     print('ITERATION:', _iteration)
     print('EPOCHS:', _epochs)
     print('BATCH_SIZE:', _batch_size)
@@ -742,7 +743,7 @@ def do_non_corruption(tr_X, tr_y, te_X, te_y, batch_size, iteration, epochs, loc
 def do_iid_corruption(total_cnt, cur_cnt,
                       tr_X, tr_y, te_X, te_y,
                       batch_size, iteration, epochs, local_num, uncert_fedavg,
-                      cor_local_ratio, cor_label_ratio, cor_data_ratio, cor_mode):
+                      cor_local_ratio, cor_label_ratio, cor_data_ratio, cor_mode, dataset='mnist'):
     tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_corrupted_iid_samples(
         tr_X, tr_y, te_X, te_y,
         cor_local_ratio=cor_local_ratio,
@@ -777,7 +778,7 @@ def do_iid_corruption(total_cnt, cur_cnt,
 def do_iid_backdoor(total_cnt, cur_cnt,
                     tr_X, tr_y, te_X, te_y,
                     batch_size, iteration, epochs, local_num, uncert_fedavg,
-                    cor_local_ratio, cor_label_ratio, cor_data_ratio, target_label):
+                    cor_local_ratio, cor_label_ratio, cor_data_ratio, target_label, dataset='mnist'):
     tr_X_dict, tr_y_dict, te_X_dict, te_y_dict, val_X_dict, val_y_dict = create_backdoor_iid_samples(
         tr_X, tr_y, te_X, te_y, target_label=target_label,
         cor_local_ratio=cor_local_ratio,
@@ -843,6 +844,7 @@ def do_non_iid_corruption(total_cnt, cur_cnt,
         pdist=pdist,
         num_of_sample=local_num,
         verbose=True,
+        dataset=dataset
     )
 
     log_name = 'federated_' + 'non-iid' + '_'
@@ -870,7 +872,7 @@ def do_non_iid_corruption(total_cnt, cur_cnt,
 def do_non_iid_backdoor(total_cnt, cur_cnt, tr_X, tr_y, te_X, te_y,
                         batch_size, iteration, epochs, local_num, uncert_fedavg,
                         cor_local_ratio, cor_minor_label_cnt, cor_major_data_ratio,
-                        cor_minor_data_ratio, pdist, target_label):
+                        cor_minor_data_ratio, pdist, target_label, dataset='mnist'):
     tr_X_dict, tr_y_dict, te_X_dict, te_y_dict, val_X_dict, val_y_dict = create_backdoor_non_iid_samples(
         tr_X, tr_y, te_X, te_y, target_label,
         cor_local_ratio=cor_local_ratio,

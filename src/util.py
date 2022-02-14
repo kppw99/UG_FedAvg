@@ -120,6 +120,19 @@ def _add_bd_pattern(x, start_idx=1, size=5, show=False):
     return temp_x.reshape(1, 28, 28)
 
 
+def _add_bd_pattern_cifar10(x, start_idx=1, size=5, show=False):
+    temp_x = np.transpose(x, (1, 2, 0))
+
+    for i in range(2):
+        for j in range(start_idx, start_idx + size):
+            temp_x[j][(start_idx + size) // 2][i] = 1.0
+            temp_x[(start_idx + size) // 2][j][i] = 1.0
+    if show is True:
+        plt.imshow(temp_x)
+        plt.show()
+    return np.transpose(temp_x, (2, 0, 1))
+
+
 def _create_corrupted_subsamples(sample_dict, x_data, y_data, x_name, y_name,
                                  cor_local_ratio=1.0, cor_label_ratio=0.2, cor_data_ratio=0.5, mode=1):
     x_data_dict = dict()
@@ -181,7 +194,7 @@ def _create_corrupted_subsamples(sample_dict, x_data, y_data, x_name, y_name,
 
 
 def _create_backdoor_subsamples(sample_dict, x_data, y_data, x_name, y_name,
-                                cor_label_idx, target_label, cor_local_ratio=1.0, cor_data_ratio=0.5):
+                                cor_label_idx, target_label, cor_local_ratio=1.0, cor_data_ratio=0.5, dataset='mnist'):
     x_data_dict = dict()
     y_data_dict = dict()
 
@@ -208,7 +221,10 @@ def _create_backdoor_subsamples(sample_dict, x_data, y_data, x_name, y_name,
 
                 y_info[corrupted_idx] = target_label
                 for idx in corrupted_idx:
-                    x_info[idx] = _add_bd_pattern(x_info[idx])
+                    if dataset=='mnist':
+                        x_info[idx] = _add_bd_pattern(x_info[idx])
+                    elif dataset=='cifar10':
+                        x_info[idx] = _add_bd_pattern_cifar10(x_info[idx])
         if torch.cuda.is_available():
             x_info = x_info.cuda()
             y_info = y_info.cuda()
@@ -221,7 +237,7 @@ def _create_backdoor_subsamples(sample_dict, x_data, y_data, x_name, y_name,
 def _create_backdoor_subsamples2(sample_dict, x_data, y_data, x_name, y_name,
                                 cor_local_idx, cor_label_idx, target_label,
                                 cor_major_data_ratio=0.2,
-                                cor_minor_data_ratio=0.5):
+                                cor_minor_data_ratio=0.5, dataset='mnist'):
     x_data_dict = dict()
     y_data_dict = dict()
 
@@ -251,7 +267,10 @@ def _create_backdoor_subsamples2(sample_dict, x_data, y_data, x_name, y_name,
                     corrupted_idx = random.sample(list(temp_dices), cor_data_len)
                     y_info[corrupted_idx] = target_label
                     for idx in corrupted_idx:
-                        x_info[idx] = _add_bd_pattern(x_info[idx])
+                        if dataset == 'mnist':
+                            x_info[idx] = _add_bd_pattern(x_info[idx])
+                        elif dataset == 'cifar10':
+                            x_info[idx] = _add_bd_pattern_cifar10(x_info[idx])
                         major_cnt += 1
                     temp_label_idx.remove(j)
 
@@ -261,7 +280,10 @@ def _create_backdoor_subsamples2(sample_dict, x_data, y_data, x_name, y_name,
                 corrupted_idx = random.sample(list(temp_dices), cor_data_len)
                 y_info[corrupted_idx] = target_label
                 for idx in corrupted_idx:
-                    x_info[idx] = _add_bd_pattern(x_info[idx])
+                    if dataset == 'mnist':
+                        x_info[idx] = _add_bd_pattern(x_info[idx])
+                    elif dataset == 'cifar10':
+                        x_info[idx] = _add_bd_pattern_cifar10(x_info[idx])
                     minor_cnt += 1
 
         if torch.cuda.is_available():
@@ -468,7 +490,7 @@ def create_corrupted_non_iid_samples(x_train, y_train, x_test, y_test,
                                      cor_minor_label_cnt=4,
                                      cor_major_data_ratio=0.2,
                                      cor_minor_data_ratio=0.5, mode=1,
-                                     num_of_sample=10, pdist=0.6, seed=1, verbose=True):
+                                     num_of_sample=10, pdist=0.6, seed=1, verbose=True, dataset='mnist'):
     sample_dict_train = _get_non_iid_subsamples_indices(y_train, num_of_sample, pdist, seed)
     x_train_dict, y_train_dict = _create_corrupted_subsamples2(sample_dict_train, x_train, y_train,
                                                                'x_train', 'y_train',
@@ -490,7 +512,7 @@ def create_backdoor_non_iid_samples(x_train, y_train, x_test, y_test, target_lab
                                     cor_minor_label_cnt=4,
                                     cor_major_data_ratio=0.2,
                                     cor_minor_data_ratio=0.5,
-                                    num_of_sample=10, pdist=0.6, seed=1, verbose=True):
+                                    num_of_sample=10, pdist=0.6, seed=1, verbose=True, dataset='mnist'):
     sample_dict_train = _get_non_iid_subsamples_indices(y_train, num_of_sample, pdist, seed)
 
     num_of_local = len(sample_dict_train)
@@ -508,14 +530,14 @@ def create_backdoor_non_iid_samples(x_train, y_train, x_test, y_test, target_lab
 
     x_train_dict, y_train_dict = _create_backdoor_subsamples2(sample_dict_train, x_train, y_train, 'x_train', 'y_train',
                                                               cor_local_idx, cor_label_idx, target_label,
-                                                              cor_major_data_ratio, cor_minor_data_ratio)
+                                                              cor_major_data_ratio, cor_minor_data_ratio, dataset)
 
     sample_dict_test = _get_non_iid_subsamples_indices(y_test, num_of_sample, pdist, seed)
     x_test_dict, y_test_dict = _create_subsamples(sample_dict_test, x_test, y_test, 'x_test', 'y_test')
 
     x_val_dict, y_val_dict = _create_backdoor_subsamples2(sample_dict_test, x_test, y_test, 'x_val', 'y_val',
                                                           cor_local_idx, cor_label_idx, target_label,
-                                                          cor_major_data_ratio, cor_minor_data_ratio)
+                                                          cor_major_data_ratio, cor_minor_data_ratio, dataset)
 
     if verbose:
         _print_dict(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_val_dict, y_val_dict)
@@ -540,7 +562,7 @@ def create_iid_samples(x_train, y_train, x_test, y_test, num_of_sample=10, seed=
 
 def create_corrupted_iid_samples(x_train, y_train, x_test, y_test,
                                  cor_local_ratio=1.0, cor_label_ratio=0.2, cor_data_ratio=0.5, mode=1,
-                                 num_of_sample=10, seed=1, verbose=True):
+                                 num_of_sample=10, seed=1, verbose=True, dataset='mnist'):
     sample_dict_train = _get_iid_subsamples_indices(y_train, num_of_sample, seed)
     x_train_dict, y_train_dict = _create_corrupted_subsamples(sample_dict_train, x_train, y_train,
                                                               'x_train', 'y_train',
@@ -559,7 +581,7 @@ def create_corrupted_iid_samples(x_train, y_train, x_test, y_test,
 
 def create_backdoor_iid_samples(x_train, y_train, x_test, y_test,
                                  cor_local_ratio=1.0, cor_label_ratio=0.2, cor_data_ratio=0.5, target_label=1,
-                                 num_of_sample=10, seed=1, verbose=True):
+                                 num_of_sample=10, seed=1, verbose=True, dataset='mnist'):
     sample_dict_train = _get_iid_subsamples_indices(y_train, num_of_sample, seed)
 
     num_of_label = len(set(y_train.tolist()))
@@ -576,7 +598,7 @@ def create_backdoor_iid_samples(x_train, y_train, x_test, y_test,
 
     x_train_dict, y_train_dict = _create_backdoor_subsamples(sample_dict_train, x_train, y_train, 'x_train', 'y_train',
                                                              cor_label_idx, target_label,
-                                                             cor_local_ratio, cor_data_ratio)
+                                                             cor_local_ratio, cor_data_ratio, dataset)
 
     sample_dict_test = _get_iid_subsamples_indices(y_test, num_of_sample, seed)
     x_test_dict, y_test_dict = _create_subsamples(sample_dict_test, x_test, y_test,
@@ -584,7 +606,7 @@ def create_backdoor_iid_samples(x_train, y_train, x_test, y_test,
 
     x_val_dict, y_val_dict = _create_backdoor_subsamples(sample_dict_test, x_test, y_test, 'x_val', 'y_val',
                                                          cor_label_idx, target_label,
-                                                         cor_local_ratio, cor_data_ratio)
+                                                         cor_local_ratio, cor_data_ratio, dataset)
 
     if verbose:
         _print_dict(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_val_dict, y_val_dict)
