@@ -110,7 +110,7 @@ class CNN4FL_CIFAR10(nn.Module):
         dim = 1
         for d in out.size()[1:]:  # 16, 4, 4
             dim = dim * d
-        out = out.view(-1, dim)
+        out = out.contiguous().view(-1, dim)
         out = self.fc_module(out)
         return F.softmax(out, dim=1)
 

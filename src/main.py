@@ -6,8 +6,6 @@ from config import *
 if __name__=='__main__':
     # Load data
     tr_X, tr_y, te_X, te_y, pre_X, pre_y = load_data(data=DATASET, pre_train=True)
-    print(tr_X.shape, tr_y.shape, te_X.shape)
-    print(tr_y[0], type(tr_y[0]))
 
     # for UNCERT_FEDAVG in [False, True]:   # False, True
     for MODEL in MODEL_LIST:

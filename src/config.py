@@ -4,10 +4,10 @@ NUM_OF_LOCAL = 10
 COR_LOCAL_RATIO = 1.0
 CENTRAL_EPOCHS = 20
 
-DATASET = 'mnist'     # mnist, cifar10
-UNCERT_FEDAVG_LIST = [1]  # fl_origin=0, fl_with_pre_train=1, fl_with_uncertainty=2
+DATASET = 'cifar10'     # mnist, cifar10
+UNCERT_FEDAVG_LIST = [0]  # fl_origin=0, fl_with_pre_train=1, fl_with_uncertainty=2
 COR_MODE_LIST = [0]  # label_flipping=0, label_shuffling=1, backdoor=2
-MODEL_LIST = ['federate']  # central, federate
+MODEL_LIST = ['central']  # central, federate
 DIST_LIST = ['non-iid']  # iid, non-iid
 TARGET_LABEL = 1
 #################################################
