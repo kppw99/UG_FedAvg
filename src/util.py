@@ -416,7 +416,7 @@ def _load_data(path='../data/mnist.pkl.gz', seed=1, torch_tensor=True, pre_train
 
 
 def _normalize(x):
-    x = (torch.tensor(x.clone().detach(), dtype=torch.float) - 128.0) / 128
+    x = (torch.tensor(x.clone().detach(), dtype=torch.float) - 128.0) / 128.0
     return x
 
 

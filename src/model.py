@@ -1,6 +1,7 @@
 import time
 
 from util import *
+from resnet import *
 
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score
@@ -65,67 +66,41 @@ class CNN4FL_MNIST(nn.Module):
         return F.softmax(out, dim=1)
 
 
-class CNN4FL_CIFAR10(nn.Module):
-    def __init__(self):
-        # 항상 torch.nn.Module을 상속받고 시작
-        super(CNN4FL_CIFAR10, self).__init__()
-
-        pool = nn.MaxPool2d(2, 2)
-        dropout = nn.Dropout(p=0.5)
-
-        conv1 = nn.Conv2d(3, 64, 3)
-        conv2 = nn.Conv2d(64, 128, 3)
-        conv3 = nn.Conv2d(128, 256, 3)
-
-        self.conv_module = nn.Sequential(
-            conv1,
-            nn.ReLU(),
-            pool,
-            conv2,
-            nn.ReLU(),
-            pool,
-            conv3,
-            nn.ReLU(),
-            pool,
-            dropout,
-        )
-
-        fc1 = nn.Linear(64 * 4 * 4, 128)
-        fc2 = nn.Linear(128, 256)
-        fc3 = nn.Linear(256, 10)
-
-        self.fc_module = nn.Sequential(
-            fc1,
-            nn.ReLU(),
-            dropout,
-            fc2,
-            nn.ReLU(),
-            dropout,
-            fc3
-        )
-
-        # gpu로 할당
-        if use_cuda:
-            self.conv_module = self.conv_module.cuda()
-            self.fc_module = self.fc_module.cuda()
-
-    def forward(self, x):
-        out = self.conv_module(x)  # @16*4*4
-        # make linear
-        dim = 1
-        for d in out.size()[1:]:  # 16, 4, 4
-            dim = dim * d
-        out = out.contiguous().view(-1, dim)
-        out = self.fc_module(out)
-        return F.softmax(out, dim=1)
-
-
 def _train(model, train_loader, criterion, optimizer):
     model.train()
     train_loss = 0.0
     correct = 0
 
+    if use_cuda:
+        criterion = criterion.cuda()
+
     for data, target in train_loader:
+        if use_cuda:
+            data = data.cuda()
+            target = target.cuda()
+
+        output = model(data)
+        loss = criterion(output, target)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        train_loss += loss.item()
+        prediction = output.argmax(dim=1, keepdim=True)
+        correct += prediction.eq(target.view_as(prediction)).sum().item()
+
+    return train_loss / len(train_loader), correct / len(train_loader.dataset)
+
+
+def temp_train(model, train_loader, criterion, optimizer):
+    model.train()
+    train_loss = 0.0
+    correct = 0
+
+    for data, target in train_loader:
+        data = data.cuda()
+        target = target.cuda()
+
         output = model(data)
         loss = criterion(output, target)
         optimizer.zero_grad()
@@ -143,8 +118,36 @@ def _evaluate(model, test_loader, criterion):
     model.eval()
     test_loss = 0.0
     correct = 0
+
+    if use_cuda:
+        criterion = criterion.cuda()
+
     with torch.no_grad():
         for data, target in test_loader:
+            if use_cuda:
+                data = data.cuda()
+                target = target.cuda()
+            output = model(data)
+
+            test_loss += criterion(output, target).item()
+            prediction = output.argmax(dim=1, keepdim=True)
+            correct += prediction.eq(target.view_as(prediction)).sum().item()
+
+    test_loss /= len(test_loader)
+    correct /= len(test_loader.dataset)
+
+    return (test_loss, correct)
+
+
+def temp_evaluate(model, test_loader, criterion):
+    model.eval()
+    test_loss = 0.0
+    correct = 0
+    with torch.no_grad():
+        for data, target in test_loader:
+            data = data.cuda()
+            target = target.cuda()
+
             output = model(data)
 
             test_loss += criterion(output, target).item()
@@ -392,7 +395,7 @@ def _create_local_models(dataset='mnist', number_of_samples=10, lr=0.01, momentu
         if dataset=='mnist':
             model_info = CNN4FL_MNIST()
         elif dataset=='cifar10':
-            model_info = CNN4FL_CIFAR10()
+            model_info = resnet44()
         model_dict.update({model_name: model_info})
 
         optimizer_name = 'optimizer' + str(i)
@@ -419,7 +422,7 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
         if dataset=='mnist':
             main_model = CNN4FL_MNIST()
         elif dataset=='cifar10':
-            main_model = CNN4FL_CIFAR10()
+            main_model = resnet44()
 
     main_criterion = nn.CrossEntropyLoss()
 
@@ -538,7 +541,7 @@ def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, d
     if dataset=='mnist':
         model = CNN4FL_MNIST()
     elif dataset=='cifar10':
-        model = CNN4FL_CIFAR10()
+        model = resnet44()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     criterion = nn.CrossEntropyLoss()
 
@@ -605,7 +608,7 @@ def load_model(path, dataset='mnist'):
     if dataset=='mnist':
         model = CNN4FL_MNIST()
     elif dataset=='cifar10':
-        model = CNN4FL_CIFAR10()
+        model = resnet44()
     model.load_state_dict(torch.load(path))
 
     return model

@@ -1,10 +1,11 @@
 ## COMMON #######################################
-BATCH_SIZE = 256
+BATCH_SIZE = 128
 NUM_OF_LOCAL = 10
 COR_LOCAL_RATIO = 1.0
-CENTRAL_EPOCHS = 50
+CENTRAL_EPOCHS = 200
 
 DATASET = 'cifar10'     # mnist, cifar10
+PRE_TRAIN = False
 UNCERT_FEDAVG_LIST = [0]  # fl_origin=0, fl_with_pre_train=1, fl_with_uncertainty=2
 COR_MODE_LIST = [0]  # label_flipping=0, label_shuffling=1, backdoor=2
 MODEL_LIST = ['central']  # central, federate
