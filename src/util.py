@@ -383,7 +383,7 @@ def _print_dict(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_val_dict
         print('# total:', sum, end='\n\n')
 
 
-def load_mnist_data(path='../data/mnist.pkl.gz', seed=1, torch_tensor=True, pre_train=False):
+def _load_data(path='../data/mnist.pkl.gz', seed=1, torch_tensor=True, pre_train=False):
     data_path = Path(path)
     with gzip.open(data_path, "rb") as f:
         ((x_train, y_train), (x_test, y_test)) = pickle.load(f)
@@ -408,15 +408,38 @@ def load_mnist_data(path='../data/mnist.pkl.gz', seed=1, torch_tensor=True, pre_
         if torch_tensor:
             x_train, y_train, x_test, y_test, x_pre_train, y_pre_train =\
                 map(torch.tensor, (x_train, y_train, x_test, y_test, x_pre_train, y_pre_train))
-        print(x_train.shape, y_train.shape,
-              x_test.shape, y_test.shape,
-              x_pre_train.shape, y_pre_train.shape)
         return x_train, y_train, x_test, y_test, x_pre_train, y_pre_train
     else:
         if torch_tensor:
             x_train, y_train, x_test, y_test = map(torch.tensor, (x_train, y_train, x_test, y_test))
-        print(x_train.shape, y_train.shape, x_test.shape, y_test.shape)
         return x_train, y_train, x_test, y_test, None, None
+
+
+def load_data(data='mnist', seed=1, torch_tensor=True, pre_train=False):
+    if data=='mnist':
+        path='../data/mnist.pkl.gz'
+        tr_X, tr_y, te_X, te_y, pre_X, pre_y = _load_data(path, seed, torch_tensor, pre_train)
+        if pre_train:
+            print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape, pre_X.shape, pre_y.shape)
+        else:
+            print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape)
+        return tr_X, tr_y, te_X, te_y, pre_X, pre_y
+    elif data=='cifar10':
+        path='../data/cifar10.pkl.gz'
+        tr_X, tr_y, te_X, te_y, pre_X, pre_y = _load_data(path, seed, torch_tensor, pre_train)
+        tr_X = np.transpose(tr_X, (0, 3, 1, 2)) / 255.0
+        te_X = np.transpose(te_X, (0, 3, 1, 2)) / 255.0
+        tr_y = torch.tensor(tr_y.clone().detach().reshape(-1), dtype=torch.int64)
+        te_y = torch.tensor(te_y.clone().detach().reshape(-1), dtype=torch.int64)
+        if pre_train:
+            pre_X = np.transpose(te_X, (0, 3, 1, 2))
+            print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape, pre_X.shape, pre_y.shape)
+        else:
+            print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape)
+        return tr_X, tr_y, te_X, te_y, pre_X, pre_y
+    else:
+        print('Please check the data name!:', data)
+        return None, None, None, None, None, None
 
 
 def create_non_iid_samples(x_train, y_train, x_test, y_test,

@@ -15,10 +15,10 @@ CORRUPTION_MODE = ['label_flipping', 'label_shuffling', 'backdoor']
 use_cuda = torch.cuda.is_available()
 
 
-class CNN4FL(nn.Module):
+class CNN4FL_MNIST(nn.Module):
     def __init__(self):
         # 항상 torch.nn.Module을 상속받고 시작
-        super(CNN4FL, self).__init__()
+        super(CNN4FL_MNIST, self).__init__()
         conv1 = nn.Conv2d(1, 6, 5, 1)  # 6@24*24
         # activation ReLU
         pool1 = nn.MaxPool2d(2)  # 6@12*12
@@ -63,6 +63,57 @@ class CNN4FL(nn.Module):
         out = out.view(-1, dim)
         out = self.fc_module(out)
         return F.softmax(out, dim=1)
+
+
+class CNN4FL_CIFAR10(nn.Module):
+    def __init__(self):
+        # 항상 torch.nn.Module을 상속받고 시작
+        super(CNN4FL_CIFAR10, self).__init__()
+        conv1 = nn.Conv2d(3, 6, 5, 1)  # 6@24*24
+        # activation ReLU
+        pool1 = nn.MaxPool2d(2)  # 6@12*12
+        conv2 = nn.Conv2d(6, 16, 5, 1)  # 16@8*8
+        # activation ReLU
+        pool2 = nn.MaxPool2d(2)  # 16@4*4
+
+        self.conv_module = nn.Sequential(
+            conv1,
+            nn.ReLU(),
+            pool1,
+            conv2,
+            nn.ReLU(),
+            pool2
+        )
+
+        fc1 = nn.Linear(16 * 5 * 5, 120)
+        # activation ReLU
+        fc2 = nn.Linear(120, 84)
+        # activation ReLU
+        fc3 = nn.Linear(84, 10)
+
+        self.fc_module = nn.Sequential(
+            fc1,
+            nn.ReLU(),
+            fc2,
+            nn.ReLU(),
+            fc3
+        )
+
+        # gpu로 할당
+        if use_cuda:
+            self.conv_module = self.conv_module.cuda()
+            self.fc_module = self.fc_module.cuda()
+
+    def forward(self, x):
+        out = self.conv_module(x)  # @16*4*4
+        # make linear
+        dim = 1
+        for d in out.size()[1:]:  # 16, 4, 4
+            dim = dim * d
+        out = out.view(-1, dim)
+        out = self.fc_module(out)
+        return F.softmax(out, dim=1)
+
 
 def _train(model, train_loader, criterion, optimizer):
     model.train()
@@ -326,14 +377,17 @@ def _update_main_model(main_model, model_dict):
     return main_model
 
 
-def _create_local_models(number_of_samples=10, lr=0.01, momentum=0.9):
+def _create_local_models(dataset='mnist', number_of_samples=10, lr=0.01, momentum=0.9):
     model_dict = dict()
     optimizer_dict = dict()
     criterion_dict = dict()
 
     for i in range(number_of_samples):
         model_name = 'model' + str(i)
-        model_info = CNN4FL()
+        if dataset=='mnist':
+            model_info = CNN4FL_MNIST()
+        elif dataset=='cifar10':
+            model_info = CNN4FL_CIFAR10()
         model_dict.update({model_name: model_info})
 
         optimizer_name = 'optimizer' + str(i)
@@ -349,19 +403,23 @@ def _create_local_models(number_of_samples=10, lr=0.01, momentum=0.9):
 
 def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_test, y_test,
                        number_of_samples, iteration, epochs, batch_size, log_name,
-                       pre_train=True,
+                       dataset='mnist', pre_train=True,
                        verbose=False):
     if pre_train:
         if use_cuda:
-            main_model = load_model('../data/model/pre_train_model')
+            main_model = load_model('../data/model/pre_train_model', dataset=dataset)
         else:
-            main_model = load_model('../data/model/pre_train_model_no_cuda')
+            main_model = load_model('../data/model/pre_train_model_no_cuda', dataset=dataset)
     else:
-        main_model = CNN4FL()
+        if dataset=='mnist':
+            main_model = CNN4FL_MNIST()
+        elif dataset=='cifar10':
+            main_model = CNN4FL_CIFAR10()
 
     main_criterion = nn.CrossEntropyLoss()
 
-    local_model_dict, local_optimizer_dict, local_criterion_dict = _create_local_models(number_of_samples)
+    local_model_dict, local_optimizer_dict, local_criterion_dict = _create_local_models(
+        dataset=dataset, number_of_samples=number_of_samples)
     if use_cuda:
         x_test = x_test.cuda()
         y_test = y_test.cuda()
@@ -403,16 +461,17 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
 
 def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_test, y_test,
                               number_of_samples, iteration, epochs, batch_size, log_name,
-                              uncert_threshold=0.2,
+                              dataset='mnist', uncert_threshold=0.2,
                               verbose=False):
     if use_cuda:
-        main_model = load_model('../data/model/pre_train_model')
+        main_model = load_model('../data/model/pre_train_model', dataset=dataset)
     else:
-        main_model = load_model('../data/model/pre_train_model_no_cuda')
+        main_model = load_model('../data/model/pre_train_model_no_cuda', dataset=dataset)
 
     main_criterion = nn.CrossEntropyLoss()
 
-    local_model_dict, local_optimizer_dict, local_criterion_dict = _create_local_models(number_of_samples)
+    local_model_dict, local_optimizer_dict, local_criterion_dict = _create_local_models(
+        dataset=dataset, number_of_samples=number_of_samples)
     if use_cuda:
         x_test = x_test.cuda()
         y_test = y_test.cuda()
@@ -470,8 +529,11 @@ def create_eval_report(model, x_test, y_test, printable=True):
     return report
 
 
-def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size):
-    model = CNN4FL()
+def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, dataset='mnist'):
+    if dataset=='mnist':
+        model = CNN4FL_MNIST()
+    elif dataset=='cifar10':
+        model = CNN4FL_CIFAR10()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     criterion = nn.CrossEntropyLoss()
 
@@ -534,14 +596,17 @@ def save_model(model, path):
     torch.save(model.state_dict(), path)
 
 
-def load_model(path):
-    model = CNN4FL()
+def load_model(path, dataset='mnist'):
+    if dataset=='mnist':
+        model = CNN4FL_MNIST()
+    elif dataset=='cifar10':
+        model = CNN4FL_CIFAR10()
     model.load_state_dict(torch.load(path))
 
     return model
 
 
-def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs):
+def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs, dataset='mnist'):
     if use_cuda:
         tr_X = tr_X.cuda()
         tr_y = tr_y.cuda()
@@ -551,7 +616,8 @@ def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs):
     centralized_model = centralized_learning(
         tr_X, tr_y, te_X, te_y,
         epochs=epochs,
-        batch_size=batch_size
+        batch_size=batch_size,
+        dataset=dataset
     )
 
     create_eval_report(centralized_model, te_X, te_y)
@@ -564,6 +630,7 @@ def do_FL(_dataset, _iteration, _epochs, _batch_size,
           _tr_X_dict, _tr_y_dict, _te_X_dict, _te_y_dict, _te_X, _te_y,
           _num_of_local, _log_name, cur_cnt, total_cnt,
           uncert=0,
+          dataset='mnist',
           uncert_threshold=0.2,
           verbose=False):
     print('\n===================================')
@@ -584,6 +651,7 @@ def do_FL(_dataset, _iteration, _epochs, _batch_size,
             epochs=_epochs,
             batch_size=_batch_size,
             log_name=_log_name,
+            dataset=dataset,
             uncert_threshold=uncert_threshold,
             verbose=verbose
         )
@@ -595,6 +663,7 @@ def do_FL(_dataset, _iteration, _epochs, _batch_size,
             epochs=_epochs,
             batch_size=_batch_size,
             log_name=_log_name,
+            dataset=dataset,
             pre_train=True,
             verbose=verbose
         )
@@ -606,6 +675,7 @@ def do_FL(_dataset, _iteration, _epochs, _batch_size,
             epochs=_epochs,
             batch_size=_batch_size,
             log_name=_log_name,
+            dataset=dataset,
             pre_train=False,
             verbose=verbose
         )
@@ -627,7 +697,8 @@ def do_FL(_dataset, _iteration, _epochs, _batch_size,
     return main_model
 
 
-def do_non_corruption(tr_X, tr_y, te_X, te_y, batch_size, iteration, epochs, local_num, uncert_fedavg, mode='iid'):
+def do_non_corruption(tr_X, tr_y, te_X, te_y, batch_size, iteration, epochs, local_num, uncert_fedavg, mode='iid',
+                      dataset='mnist'):
     if mode == 'iid':
         tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_corrupted_iid_samples(
             tr_X, tr_y, te_X, te_y,
@@ -649,6 +720,7 @@ def do_non_corruption(tr_X, tr_y, te_X, te_y, batch_size, iteration, epochs, loc
           tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
           te_X, te_y, local_num, log_name,
           1, 1,
+          dataset=dataset,
           uncert=uncert_fedavg,
           verbose=False)
 
@@ -670,7 +742,8 @@ def do_iid_corruption(total_cnt, cur_cnt,
         cor_data_ratio=cor_data_ratio,
         mode=cor_mode,
         num_of_sample=local_num,
-        verbose=True
+        verbose=True,
+        dataset='mnist'
     )
 
     log_name = 'federated_' + 'iid' + '_'
@@ -683,6 +756,7 @@ def do_iid_corruption(total_cnt, cur_cnt,
           tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
           te_X, te_y, local_num, log_name,
           cur_cnt, total_cnt,
+          dataset=dataset,
           uncert=uncert_fedavg,
           verbose=False)
     # Release variables
@@ -702,7 +776,8 @@ def do_iid_backdoor(total_cnt, cur_cnt,
         cor_label_ratio=cor_label_ratio,
         cor_data_ratio=cor_data_ratio,
         num_of_sample=local_num,
-        verbose=True
+        verbose=True,
+        dataset='mnist'
     )
 
     log_name = 'federated_' + 'iid' + '_'
@@ -715,6 +790,7 @@ def do_iid_backdoor(total_cnt, cur_cnt,
                        tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
                        te_X, te_y, local_num, log_name,
                        cur_cnt, total_cnt,
+                       dataset=dataset,
                        uncert=uncert_fedavg,
                        verbose=False)
 
@@ -748,7 +824,7 @@ def do_non_iid_corruption(total_cnt, cur_cnt,
                           tr_X, tr_y, te_X, te_y,
                           batch_size, iteration, epochs, local_num, uncert_fedavg,
                           cor_local_ratio, cor_minor_label_cnt, cor_major_data_ratio, cor_minor_data_ratio,
-                          pdist, cor_mode):
+                          pdist, cor_mode, dataset='mnist'):
     tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_corrupted_non_iid_samples(
         tr_X, tr_y, te_X, te_y,
         cor_local_ratio=cor_local_ratio,
@@ -758,7 +834,7 @@ def do_non_iid_corruption(total_cnt, cur_cnt,
         mode=cor_mode,
         pdist=pdist,
         num_of_sample=local_num,
-        verbose=True
+        verbose=True,
     )
 
     log_name = 'federated_' + 'non-iid' + '_'
@@ -773,6 +849,7 @@ def do_non_iid_corruption(total_cnt, cur_cnt,
           te_X, te_y, local_num, log_name,
           cur_cnt, total_cnt,
           uncert=uncert_fedavg,
+          dataset=dataset,
           uncert_threshold=0.1,
           verbose=False)
     # Release variables
@@ -794,7 +871,8 @@ def do_non_iid_backdoor(total_cnt, cur_cnt, tr_X, tr_y, te_X, te_y,
         cor_minor_data_ratio=cor_minor_data_ratio,
         pdist=pdist,
         num_of_sample=local_num,
-        verbose=True
+        verbose=True,
+        dataset='mnist'
     )
 
     log_name = 'federated_' + 'non-iid' + '_'
@@ -808,6 +886,7 @@ def do_non_iid_backdoor(total_cnt, cur_cnt, tr_X, tr_y, te_X, te_y,
                        te_X, te_y, local_num, log_name,
                        cur_cnt, total_cnt,
                        uncert=uncert_fedavg,
+                       dataset=dataset,
                        uncert_threshold=0.1,
                        verbose=False)
 
