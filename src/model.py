@@ -69,33 +69,38 @@ class CNN4FL_CIFAR10(nn.Module):
     def __init__(self):
         # 항상 torch.nn.Module을 상속받고 시작
         super(CNN4FL_CIFAR10, self).__init__()
-        conv1 = nn.Conv2d(3, 6, 5, 1)  # 6@24*24
-        # activation ReLU
-        pool1 = nn.MaxPool2d(2)  # 6@12*12
-        conv2 = nn.Conv2d(6, 16, 5, 1)  # 16@8*8
-        # activation ReLU
-        pool2 = nn.MaxPool2d(2)  # 16@4*4
+
+        pool = nn.MaxPool2d(2, 2)
+        dropout = nn.Dropout(p=0.5)
+
+        conv1 = nn.Conv2d(3, 64, 3)
+        conv2 = nn.Conv2d(64, 128, 3)
+        conv3 = nn.Conv2d(128, 256, 3)
 
         self.conv_module = nn.Sequential(
             conv1,
             nn.ReLU(),
-            pool1,
+            pool,
             conv2,
             nn.ReLU(),
-            pool2
+            pool,
+            conv3,
+            nn.ReLU(),
+            pool,
+            dropout,
         )
 
-        fc1 = nn.Linear(16 * 5 * 5, 120)
-        # activation ReLU
-        fc2 = nn.Linear(120, 84)
-        # activation ReLU
-        fc3 = nn.Linear(84, 10)
+        fc1 = nn.Linear(64 * 4 * 4, 128)
+        fc2 = nn.Linear(128, 256)
+        fc3 = nn.Linear(256, 10)
 
         self.fc_module = nn.Sequential(
             fc1,
             nn.ReLU(),
+            dropout,
             fc2,
             nn.ReLU(),
+            dropout,
             fc3
         )
 

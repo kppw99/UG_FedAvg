@@ -1,8 +1,8 @@
 ## COMMON #######################################
-BATCH_SIZE = 64
+BATCH_SIZE = 256
 NUM_OF_LOCAL = 10
 COR_LOCAL_RATIO = 1.0
-CENTRAL_EPOCHS = 20
+CENTRAL_EPOCHS = 50
 
 DATASET = 'cifar10'     # mnist, cifar10
 UNCERT_FEDAVG_LIST = [0]  # fl_origin=0, fl_with_pre_train=1, fl_with_uncertainty=2

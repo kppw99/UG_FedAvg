@@ -415,6 +415,11 @@ def _load_data(path='../data/mnist.pkl.gz', seed=1, torch_tensor=True, pre_train
         return x_train, y_train, x_test, y_test, None, None
 
 
+def _normalize(x):
+    x = (torch.tensor(x.clone().detach(), dtype=torch.float) - 128.0) / 128
+    return x
+
+
 def load_data(data='mnist', seed=1, torch_tensor=True, pre_train=False):
     if data=='mnist':
         path='../data/mnist.pkl.gz'
@@ -427,12 +432,12 @@ def load_data(data='mnist', seed=1, torch_tensor=True, pre_train=False):
     elif data=='cifar10':
         path='../data/cifar10.pkl.gz'
         tr_X, tr_y, te_X, te_y, pre_X, pre_y = _load_data(path, seed, torch_tensor, pre_train)
-        tr_X = np.transpose(tr_X, (0, 3, 1, 2)) / 255.0
-        te_X = np.transpose(te_X, (0, 3, 1, 2)) / 255.0
+        tr_X = _normalize(np.transpose(tr_X, (0, 3, 1, 2)))
+        te_X = _normalize(np.transpose(te_X, (0, 3, 1, 2)))
         tr_y = torch.tensor(tr_y.clone().detach().reshape(-1), dtype=torch.int64)
         te_y = torch.tensor(te_y.clone().detach().reshape(-1), dtype=torch.int64)
         if pre_train:
-            pre_X = np.transpose(te_X, (0, 3, 1, 2))
+            pre_X = _normalize(np.transpose(te_X, (0, 3, 1, 2)))
             print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape, pre_X.shape, pre_y.shape)
         else:
             print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape)
