@@ -395,7 +395,7 @@ def _create_local_models(dataset='mnist', number_of_samples=10, lr=0.01, momentu
         if dataset=='mnist':
             model_info = CNN4FL_MNIST()
         elif dataset=='cifar10':
-            model_info = resnet44()
+            model_info = resnet32()
         model_dict.update({model_name: model_info})
 
         optimizer_name = 'optimizer' + str(i)
@@ -422,7 +422,7 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
         if dataset=='mnist':
             main_model = CNN4FL_MNIST()
         elif dataset=='cifar10':
-            main_model = resnet44()
+            main_model = resnet32()
 
     main_criterion = nn.CrossEntropyLoss()
 
@@ -541,7 +541,7 @@ def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, d
     if dataset=='mnist':
         model = CNN4FL_MNIST()
     elif dataset=='cifar10':
-        model = resnet44()
+        model = resnet32()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     criterion = nn.CrossEntropyLoss()
 
@@ -608,7 +608,7 @@ def load_model(path, dataset='mnist'):
     if dataset=='mnist':
         model = CNN4FL_MNIST()
     elif dataset=='cifar10':
-        model = resnet44()
+        model = resnet32()
     model.load_state_dict(torch.load(path))
 
     return model
@@ -632,6 +632,7 @@ def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs, dataset='
     model_name = '../data/model/centralized_model_' + str(epochs) + '_epochs'
     model_name += time.strftime("_%Y%m%d-%H%M%S")
     save_model(centralized_model, model_name)
+    del centralized_model
 
 
 def do_FL(_dataset, _iteration, _epochs, _batch_size,
@@ -725,19 +726,20 @@ def do_non_corruption(tr_X, tr_y, te_X, te_y, batch_size, iteration, epochs, loc
 
     log_name = 'federated_' + mode + '_' + FL_ALGO[uncert_fedavg] + '_non_corrupted'
 
-    do_FL(mode, iteration, epochs, batch_size,
-          tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
-          te_X, te_y, local_num, log_name,
-          1, 1,
-          dataset=dataset,
-          uncert=uncert_fedavg,
-          verbose=False)
+    model = do_FL(mode, iteration, epochs, batch_size,
+                  tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
+                  te_X, te_y, local_num, log_name,
+                  1, 1,
+                  dataset=dataset,
+                  uncert=uncert_fedavg,
+                  verbose=False)
 
     # Release variables
     del tr_X_dict
     del tr_y_dict
     del te_X_dict
     del te_y_dict
+    del model
 
 
 def do_iid_corruption(total_cnt, cur_cnt,
@@ -761,18 +763,20 @@ def do_iid_corruption(total_cnt, cur_cnt,
     log_name += str(int(cor_label_ratio * 100)) + '_cor_label_'
     log_name += CORRUPTION_MODE[cor_mode]
 
-    do_FL('iid', iteration, epochs, batch_size,
-          tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
-          te_X, te_y, local_num, log_name,
-          cur_cnt, total_cnt,
-          dataset=dataset,
-          uncert=uncert_fedavg,
-          verbose=False)
+    model = do_FL('iid', iteration, epochs, batch_size,
+                  tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
+                  te_X, te_y, local_num, log_name,
+                  cur_cnt, total_cnt,
+                  dataset=dataset,
+                  uncert=uncert_fedavg,
+                  verbose=False)
+
     # Release variables
     del tr_X_dict
     del tr_y_dict
     del te_X_dict
     del te_y_dict
+    del model
 
 
 def do_iid_backdoor(total_cnt, cur_cnt,
@@ -803,21 +807,6 @@ def do_iid_backdoor(total_cnt, cur_cnt,
                        uncert=uncert_fedavg,
                        verbose=False)
 
-    # s_cnt = 0
-    # t_cnt = 0
-    # for i, (y, v_x, v_y) in enumerate(zip(te_y_dict, val_X_dict, val_y_dict)):
-    #     te_y = te_y_dict[y]
-    #     val_X = val_X_dict[v_x]
-    #     val_y = val_y_dict[v_y]
-    #
-    #     pred_val_y = main_model(val_X).argmax(dim=1)
-    #     for idx in range(len(te_y)):
-    #         if te_y[idx] != val_y[idx]:
-    #             if int(pred_val_y[idx]) == target_label:
-    #                 s_cnt += 1
-    #             t_cnt += 1
-    # asr = float(float(s_cnt) / float(t_cnt))
-    # print('Attack Success Rate:', asr)
     cal_asr(main_model, te_y_dict, val_X_dict, val_y_dict, target_label)
 
     # Release variables
@@ -827,6 +816,7 @@ def do_iid_backdoor(total_cnt, cur_cnt,
     del te_y_dict
     del val_X_dict
     del val_y_dict
+    del main_model
 
 
 def do_non_iid_corruption(total_cnt, cur_cnt,
@@ -853,20 +843,21 @@ def do_non_iid_corruption(total_cnt, cur_cnt,
     log_name += str(int(cor_minor_data_ratio * 100)) + '_cor_minor_data_'
     log_name += CORRUPTION_MODE[cor_mode]
 
+    model = do_FL('non-iid', iteration, epochs, batch_size,
+                  tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
+                  te_X, te_y, local_num, log_name,
+                  cur_cnt, total_cnt,
+                  uncert=uncert_fedavg,
+                  dataset=dataset,
+                  uncert_threshold=0.1,
+                  verbose=False)
 
-    do_FL('non-iid', iteration, epochs, batch_size,
-          tr_X_dict, tr_y_dict, te_X_dict, te_y_dict,
-          te_X, te_y, local_num, log_name,
-          cur_cnt, total_cnt,
-          uncert=uncert_fedavg,
-          dataset=dataset,
-          uncert_threshold=0.1,
-          verbose=False)
     # Release variables
     del tr_X_dict
     del tr_y_dict
     del te_X_dict
     del te_y_dict
+    del model
 
 
 def do_non_iid_backdoor(total_cnt, cur_cnt, tr_X, tr_y, te_X, te_y,
@@ -909,3 +900,4 @@ def do_non_iid_backdoor(total_cnt, cur_cnt, tr_X, tr_y, te_X, te_y,
     del te_y_dict
     del val_X_dict
     del val_y_dict
+    del main_model
