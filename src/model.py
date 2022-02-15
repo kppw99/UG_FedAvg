@@ -528,8 +528,9 @@ def create_eval_report(model, x_test, y_test, printable=True):
     if use_cuda:
         x_test = x_test.cuda()
         y_test = y_test.cuda()
-    y_pred = model(x_test)
-    y_pred = y_pred.argmax(dim=1)
+    with torch.no_grad():
+        y_pred = model(x_test)
+        y_pred = y_pred.argmax(dim=1)
     report = classification_report(y_test.cpu(), y_pred.cpu(), digits=4)
     if printable:
         print(report)
@@ -790,7 +791,7 @@ def do_iid_backdoor(total_cnt, cur_cnt,
         cor_data_ratio=cor_data_ratio,
         num_of_sample=local_num,
         verbose=True,
-        dataset='mnist'
+        dataset=dataset
     )
 
     log_name = 'federated_' + 'iid' + '_'
@@ -873,7 +874,7 @@ def do_non_iid_backdoor(total_cnt, cur_cnt, tr_X, tr_y, te_X, te_y,
         pdist=pdist,
         num_of_sample=local_num,
         verbose=True,
-        dataset='mnist'
+        dataset=dataset
     )
 
     log_name = 'federated_' + 'non-iid' + '_'
