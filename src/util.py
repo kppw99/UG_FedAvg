@@ -12,6 +12,31 @@ import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
+import torchvision.transforms as transforms
+import torchvision.datasets as datasets
+
+
+class CustomTensorDataset(Dataset):
+    """TensorDataset with support of transforms.
+    """
+    def __init__(self, tensors, transform=None):
+        assert all(tensors[0].size(0) == tensor.size(0) for tensor in tensors)
+        self.tensors = tensors
+        self.transform = transform
+
+    def __getitem__(self, index):
+        x = self.tensors[0][index]
+
+        if self.transform:
+            x = self.transform(x)
+
+        y = self.tensors[1][index]
+
+        return x, y
+
+    def __len__(self):
+        return self.tensors[0].size(0)
 
 
 def _split_and_shuffle_labels(y_data, seed):
@@ -437,9 +462,9 @@ def _load_data(path='../data/mnist.pkl.gz', seed=1, torch_tensor=True, pre_train
         return x_train, y_train, x_test, y_test, None, None
 
 
-def _normalize(x):
-    x = (torch.tensor(x.clone().detach(), dtype=torch.float) - 128.0) / 128.0
-    return x
+# def _normalize(x):
+#     x = (torch.tensor(x.clone().detach(), dtype=torch.float) - 128.0) / 128.0
+#     return x
 
 
 def load_data(data='mnist', seed=1, torch_tensor=True, pre_train=False):
@@ -452,14 +477,67 @@ def load_data(data='mnist', seed=1, torch_tensor=True, pre_train=False):
             print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape)
         return tr_X, tr_y, te_X, te_y, pre_X, pre_y
     elif data=='cifar10':
-        path='../data/cifar10.pkl.gz'
+        # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        #
+        # train_dataset = datasets.CIFAR10(root='../data', train=True,
+        #                                  transform=transforms.Compose([
+        #                                      transforms.RandomHorizontalFlip(),
+        #                                      transforms.RandomCrop(32, 4),
+        #                                      transforms.ToTensor(),
+        #                                      normalize]),
+        #                                  download=True
+        #                                  )
+        #
+        # test_dataset = datasets.CIFAR10(root='../data', train=False,
+        #                                 transform=transforms.Compose([
+        #                                     transforms.ToTensor(),
+        #                                     normalize])
+        #                                 )
+        #
+        # train_data = torch.utils.data.DataLoader(train_dataset,
+        #                                          batch_size=len(train_dataset), shuffle=False,
+        #                                          num_workers=4, pin_memory=True)
+        #
+        # test_data = torch.utils.data.DataLoader(test_dataset,
+        #                                         batch_size=len(test_dataset), shuffle=False,
+        #                                         num_workers=4, pin_memory=True)
+        #
+        # print('Data Loading ...')
+        # tr_X = next(iter(train_data))[0]
+        # tr_y = next(iter(train_data))[1]
+        # te_X = next(iter(test_data))[0]
+        # te_y = next(iter(test_data))[1]
+        #
+        # if pre_train:
+        #     pre_rate = 0.05
+        #     train_size = len(tr_X)
+        #     pre_data_size = int(train_size * pre_rate)
+        #
+        #     np.random.seed(seed)
+        #     shuffled_indices = np.random.permutation(train_size)
+        #
+        #     pre_indices = shuffled_indices[:pre_data_size]
+        #     tr_indices = shuffled_indices[pre_data_size:]
+        #
+        #     pre_X = tr_X[pre_indices]
+        #     pre_y = tr_y[pre_indices]
+        #
+        #     tr_X = tr_X[tr_indices]
+        #     tr_y = tr_y[tr_indices]
+        #
+        #     print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape, pre_X.shape, pre_y.shape)
+        #     return tr_X, tr_y, te_X, te_y, pre_X, pre_y
+        # else:
+        #     print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape)
+        #     return tr_X, tr_y, te_X, te_y, None, None
+        path = '../data/cifar10.pkl.gz'
         tr_X, tr_y, te_X, te_y, pre_X, pre_y = _load_data(path, seed, torch_tensor, pre_train)
-        tr_X = _normalize(np.transpose(tr_X, (0, 3, 1, 2)))
-        te_X = _normalize(np.transpose(te_X, (0, 3, 1, 2)))
-        tr_y = torch.tensor(tr_y.clone().detach().reshape(-1), dtype=torch.int64)
-        te_y = torch.tensor(te_y.clone().detach().reshape(-1), dtype=torch.int64)
+        tr_X = np.transpose(tr_X, (0, 3, 1, 2))
+        te_X = np.transpose(te_X, (0, 3, 1, 2))
+        tr_y = torch.tensor(tr_y.detach().clone().reshape(-1), dtype=torch.int64)
+        te_y = torch.tensor(te_y.detach().clone().reshape(-1), dtype=torch.int64)
         if pre_train:
-            pre_X = _normalize(np.transpose(te_X, (0, 3, 1, 2)))
+            pre_X = np.transpose(te_X, (0, 3, 1, 2))
             print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape, pre_X.shape, pre_y.shape)
         else:
             print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape)
@@ -614,14 +692,40 @@ def create_backdoor_iid_samples(x_train, y_train, x_test, y_test,
     return x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_val_dict, y_val_dict
 
 
-def create_dataloader(x_train, y_train, x_test, y_test, batch_size):
+def create_dataloader(x_train, y_train, x_test, y_test, batch_size, dataset='mnist'):
     train_data = None
     test_data = None
 
-    if x_train != None and y_train != None:
-        train_data = DataLoader(TensorDataset(x_train, y_train), batch_size=batch_size, shuffle=True)
-    if x_test != None and y_test != None:
-        test_data = DataLoader(TensorDataset(x_test, y_test), batch_size=1)
+    if dataset=='mnist':
+        if x_train != None and y_train != None:
+            train_data = DataLoader(TensorDataset(x_train, y_train), batch_size=batch_size, shuffle=True)
+        if x_test != None and y_test != None:
+            test_data = DataLoader(TensorDataset(x_test, y_test), batch_size=1)
+    elif dataset=='cifar10':
+        workers=4
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+        train_transform = transforms.Compose([transforms.ToPILImage(),
+                                              transforms.RandomHorizontalFlip(),
+                                              transforms.RandomCrop(32, 4),
+                                              transforms.ToTensor(),
+                                              normalize
+                                              ])
+
+        test_transform = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
+                                             normalize
+                                             ])
+
+        if x_train != None and y_train != None:
+            train_dataset = CustomTensorDataset(tensors=(x_train, y_train), transform=train_transform)
+            train_data = torch.utils.data.DataLoader(train_dataset,
+                                                     batch_size=batch_size, shuffle=True,
+                                                     num_workers=workers, pin_memory=True)
+        if x_test != None and y_test != None:
+            test_dataset = CustomTensorDataset(tensors=(x_test, y_test), transform=test_transform)
+            test_data = torch.utils.data.DataLoader(test_dataset,
+                                                    batch_size=batch_size, shuffle=False,
+                                                    num_workers=workers, pin_memory=True)
 
     return train_data, test_data
 
@@ -647,6 +751,13 @@ def cal_asr(model, test_y_dict, valid_X_dict, valid_y_dict, target_label):
     asr = float(float(s_cnt) / float(t_cnt))
     print('\n- Attack Success Rate: {} ({}/{})'.format(asr, s_cnt, t_cnt))
     return asr
+
+
+def adjust_learning_rate(lr, optimizer, epoch):
+    """Sets the learning rate to the initial LR decayed by 2 every 30 epochs"""
+    new_lr = lr * (0.5 ** (epoch // 30))
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = new_lr
 
 
 if __name__=='__main__':

@@ -2,6 +2,7 @@ import time
 
 from util import *
 from resnet import *
+from vgg import *
 
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score
@@ -97,9 +98,13 @@ def temp_train(model, train_loader, criterion, optimizer):
     train_loss = 0.0
     correct = 0
 
+    if use_cuda:
+        criterion = criterion.cuda()
+
     for data, target in train_loader:
-        data = data.cuda()
-        target = target.cuda()
+        if use_cuda:
+            data = data.cuda()
+            target = target.cuda()
 
         output = model(data)
         loss = criterion(output, target)
@@ -143,10 +148,15 @@ def temp_evaluate(model, test_loader, criterion):
     model.eval()
     test_loss = 0.0
     correct = 0
+
+    if use_cuda:
+        criterion = criterion.cuda()
+
     with torch.no_grad():
         for data, target in test_loader:
-            data = data.cuda()
-            target = target.cuda()
+            if use_cuda:
+                data = data.cuda()
+                target = target.cuda()
 
             output = model(data)
 
@@ -540,16 +550,25 @@ def create_eval_report(model, x_test, y_test, printable=True):
 
 def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, dataset='mnist'):
     if dataset=='mnist':
-        model = CNN4FL_MNIST()
+        if use_cuda:
+            model = CNN4FL_MNIST().cuda()
+        else:
+            model = CNN4FL_MNIST()
     elif dataset=='cifar10':
-        model = resnet32()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
+        if use_cuda:
+            model = resnet20().cuda()
+        else:
+            model = resnet20()
+
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.05, momentum=0.9, weight_decay=5e-4)
     criterion = nn.CrossEntropyLoss()
 
-    train_data, test_data = create_dataloader(x_train, y_train, x_test, y_test, batch_size)
+    train_data, test_data = create_dataloader(x_train, y_train, x_test, y_test, batch_size, dataset)
     print("------ Centralized Model ------")
     logs = list()
     for epoch in range(epochs):
+        adjust_learning_rate(0.05, optimizer, epoch)
+
         central_train_loss, central_train_accuracy = _train(model, train_data, criterion, optimizer)
         central_test_loss, central_test_accuracy = _evaluate(model, test_data, criterion)
 
@@ -616,11 +635,11 @@ def load_model(path, dataset='mnist'):
 
 
 def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs, dataset='mnist'):
-    if use_cuda:
-        tr_X = tr_X.cuda()
-        tr_y = tr_y.cuda()
-        te_X = te_X.cuda()
-        te_y = te_y.cuda()
+    # if use_cuda:
+    #     tr_X = tr_X.cuda()
+    #     tr_y = tr_y.cuda()
+    #     te_X = te_X.cuda()
+    #     te_y = te_y.cuda()
 
     centralized_model = centralized_learning(
         tr_X, tr_y, te_X, te_y,
