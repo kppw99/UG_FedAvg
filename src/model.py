@@ -1,8 +1,9 @@
 import time
-
+import os
 from util import *
-from resnet import *
-from vgg import *
+# from resnet import *
+# from vgg import *
+import torchvision.models as models
 
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score
@@ -69,6 +70,8 @@ class CNN4FL_MNIST(nn.Module):
 
 def _train(model, train_loader, criterion, optimizer):
     model.train()
+    model = torch.nn.DataParallel(model)
+    model.cuda()
     train_loss = 0.0
     correct = 0
 
@@ -77,7 +80,7 @@ def _train(model, train_loader, criterion, optimizer):
 
     for data, target in train_loader:
         if use_cuda:
-            data = data.cuda()
+            data = data.float().cuda()
             target = target.cuda()
 
         output = model(data)
@@ -95,6 +98,8 @@ def _train(model, train_loader, criterion, optimizer):
 
 def temp_train(model, train_loader, criterion, optimizer):
     model.train()
+    model = torch.nn.DataParallel(model)
+    model.cuda()
     train_loss = 0.0
     correct = 0
 
@@ -103,7 +108,7 @@ def temp_train(model, train_loader, criterion, optimizer):
 
     for data, target in train_loader:
         if use_cuda:
-            data = data.cuda()
+            data = data.float().cuda()
             target = target.cuda()
 
         output = model(data)
@@ -121,6 +126,7 @@ def temp_train(model, train_loader, criterion, optimizer):
 
 def _evaluate(model, test_loader, criterion):
     model.eval()
+    model.cuda()
     test_loss = 0.0
     correct = 0
 
@@ -130,7 +136,7 @@ def _evaluate(model, test_loader, criterion):
     with torch.no_grad():
         for data, target in test_loader:
             if use_cuda:
-                data = data.cuda()
+                data = data.float().cuda()
                 target = target.cuda()
             output = model(data)
 
@@ -146,6 +152,7 @@ def _evaluate(model, test_loader, criterion):
 
 def temp_evaluate(model, test_loader, criterion):
     model.eval()
+    model.cuda()
     test_loss = 0.0
     correct = 0
 
@@ -264,6 +271,7 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                         batch_size=1, shuffle=False)
             pre_model = model_dict[name_of_models[i]]
             pre_model.eval()
+            pre_model.cuda()
 
             new_data = list()
             new_target = list()
@@ -319,6 +327,7 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                         batch_size=1, shuffle=False)
             pre_model = model_dict[name_of_models[i]]
             pre_model.eval()
+            pre_model.cuda()
 
             new_data = list()
             new_target = list()
@@ -405,7 +414,10 @@ def _create_local_models(dataset='mnist', number_of_samples=10, lr=0.01, momentu
         if dataset=='mnist':
             model_info = CNN4FL_MNIST()
         elif dataset=='cifar10':
-            model_info = resnet32()
+            #model_info = resnet32()
+            model_info = models.resnet18(pretrained=False)
+            model_info.fc = nn.Linear(512, 10)
+        
         model_dict.update({model_name: model_info})
 
         optimizer_name = 'optimizer' + str(i)
@@ -432,7 +444,10 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
         if dataset=='mnist':
             main_model = CNN4FL_MNIST()
         elif dataset=='cifar10':
-            main_model = resnet32()
+            #main_model = resnet32()
+            main_model = models.resnet18(pretrained=False)
+            main_model.fc = nn.Linear(512, 10)
+            main_model.cuda()
 
     main_criterion = nn.CrossEntropyLoss()
 
@@ -458,7 +473,7 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
         test_loss, test_accuracy = _evaluate(main_model, test_data, main_criterion)
         print("[iter {}/{}]".format(i + 1, iteration)
               + " main_loss: {:0.4f}, main_acc: {:0.4f}".format(test_loss, test_accuracy))
-        create_eval_report(main_model, x_test, y_test, printable=verbose, dataset=dataset)
+        create_eval_report(main_model, x_test, y_test, printable=verbose)
         main_logs.append([test_loss, test_accuracy])
         local_logs.append(local_log)
 
@@ -515,7 +530,7 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
         test_loss, test_accuracy = _evaluate(main_model, test_data, main_criterion)
         print("[iter {}/{}]".format(i + 1, iteration)
               + " main_loss: {:0.4f}, main_acc: {:0.4f}".format(test_loss, test_accuracy))
-        create_eval_report(main_model, x_test, y_test, printable=verbose, dataset=dataset)
+        create_eval_report(main_model, x_test, y_test, printable=verbose)
         main_logs.append([test_loss, test_accuracy])
         local_logs.append(local_log)
 
@@ -534,30 +549,20 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
     return main_model, local_model_dict
 
 
-def create_eval_report(model, x_test, y_test, printable=True, dataset='mnist'):
-    if dataset=='cifar10':
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-
-        test_transform = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.ToTensor(),
-            normalize
-        ])
-        test_dataset = CustomTensorDataset(tensors=(x_test, y_test), transform=test_transform)
-
-        test_data = torch.utils.data.DataLoader(test_dataset,
-                                                batch_size=len(x_test), shuffle=False)
-
-        x_test = next(iter(test_data))[0]
-        y_test = next(iter(test_data))[1]
-
+def create_eval_report(model, x_test, y_test, printable=True):
     if use_cuda:
-        x_test = x_test.cuda()
+        x_test = x_test.float().cuda()
         y_test = y_test.cuda()
+        
     with torch.no_grad():
         y_pred = model(x_test)
         y_pred = y_pred.argmax(dim=1)
-    report = classification_report(y_test.cpu(), y_pred.cpu(), digits=4)
+    
+    y_test = y_test.detach().cpu().numpy()
+    y_pred = y_pred.detach().cpu().numpy()
+    
+    report = classification_report(y_test, y_pred, digits=4)    
+    # report = classification_report(y_test.cpu(), y_pred.cpu(), digits=4)
     if printable:
         print(report)
 
@@ -572,9 +577,18 @@ def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, d
             model = CNN4FL_MNIST()
     elif dataset=='cifar10':
         if use_cuda:
-            model = resnet20().cuda()
+            # model = resnet20().cuda() # FL 세팅에서는 resnet32를, Central 상황에서는 resnet20으로 들어가있어 32로 통일하였습니다
+            # model = resnet32().cuda()
+            model = models.resnet18(pretrained=False)
+            model.fc = nn.Linear(512, 10)
+            model.cuda()
+            
         else:
-            model = resnet20()
+            # model = resnet20()
+            #model = resnet32()
+            model = models.resnet18(pretrained=False)
+            model.fc = nn.Linear(512, 10)
+            model.cuda()
 
     optimizer = torch.optim.SGD(model.parameters(), lr=0.05, momentum=0.9, weight_decay=5e-4)
     criterion = nn.CrossEntropyLoss()
@@ -617,7 +631,7 @@ def compare_local_and_merged_model(main_model, local_model_dict,
                                   columns=['local', 'local_ind_model', 'merged_main_model'])
     for i, (m, x, y) in enumerate(zip(local_model_dict, x_test_dict, y_test_dict)):
         local_model = local_model_dict[m]
-        x_test = x_test_dict[x]
+        x_test = x_test_dict[x].float()
         y_test = y_test_dict[y]
 
         y_pred = local_model(x_test).argmax(dim=1)
@@ -637,14 +651,20 @@ def compare_local_and_merged_model(main_model, local_model_dict,
 
 
 def save_model(model, path):
+    path = path + '.pt' # torch weight 저장을 위한 .pt 확장자 추가
+    print('==> SAVE PATH: ', path)
     torch.save(model.state_dict(), path)
 
 
 def load_model(path, dataset='mnist'):
     if dataset=='mnist':
-        model = CNN4FL_MNIST()
+        model = CNN4FL_MNIST().cuda()
     elif dataset=='cifar10':
-        model = resnet32()
+        # model = resnet32()
+        model = models.resnet18(pretrained=False)
+        model.fc = nn.Linear(512, 10)
+        model.cuda()
+        
     model.load_state_dict(torch.load(path))
 
     return model
@@ -664,8 +684,14 @@ def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs, dataset='
         dataset=dataset
     )
 
-    create_eval_report(centralized_model, te_X, te_y, dataset=dataset)
-    model_name = '../data/model/centralized_model_' + str(epochs) + '_epochs'
+    create_eval_report(centralized_model, te_X, te_y)
+    
+    save_base = '../data/model_' + dataset
+    if not os.path.exists(save_base):
+        os.makedirs(save_base)
+    
+    model_name = os.path.join(save_base, 'centralized_model_' + str(epochs) + '_epochs')
+    # model_name = '../data/model_' + dataset + '/centralized_model_' + str(epochs) + '_epochs'
     model_name += time.strftime("_%Y%m%d-%H%M%S")
     save_model(centralized_model, model_name)
     del centralized_model
@@ -726,10 +752,18 @@ def do_FL(_dataset, _iteration, _epochs, _batch_size,
             verbose=verbose
         )
 
-    create_eval_report(main_model, _te_X, _te_y, dataset=dataset)
+    create_eval_report(main_model, _te_X, _te_y)
     compare_local_and_merged_model(main_model, local_models,
                                    _te_X_dict, _te_y_dict)
-    model_name = '../data/model/' + _log_name + '_main_model'
+    
+    save_base = '../data/model_' + dataset
+
+    if not os.path.exists(save_base):
+        os.makedirs(save_base)
+        
+    model_name = os.path.join(save_base, _log_name + '_main_model')
+    
+    # model_name = '../data_' + dataset + '/model/' + _log_name + '_main_model'
     model_name += time.strftime("_%Y%m%d-%H%M%S")
     save_model(main_model, model_name)
     # Release variables
