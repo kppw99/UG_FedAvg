@@ -462,11 +462,6 @@ def _load_data(path='../data/mnist.pkl.gz', seed=1, torch_tensor=True, pre_train
         return x_train, y_train, x_test, y_test, None, None
 
 
-# def _normalize(x):
-#     x = (torch.tensor(x.clone().detach(), dtype=torch.float) - 128.0) / 128.0
-#     return x
-
-
 def load_data(data='mnist', seed=1, torch_tensor=True, pre_train=False):
     if data=='mnist':
         path='../data/mnist.pkl.gz'
@@ -477,59 +472,6 @@ def load_data(data='mnist', seed=1, torch_tensor=True, pre_train=False):
             print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape)
         return tr_X, tr_y, te_X, te_y, pre_X, pre_y
     elif data=='cifar10':
-        # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        #
-        # train_dataset = datasets.CIFAR10(root='../data', train=True,
-        #                                  transform=transforms.Compose([
-        #                                      transforms.RandomHorizontalFlip(),
-        #                                      transforms.RandomCrop(32, 4),
-        #                                      transforms.ToTensor(),
-        #                                      normalize]),
-        #                                  download=True
-        #                                  )
-        #
-        # test_dataset = datasets.CIFAR10(root='../data', train=False,
-        #                                 transform=transforms.Compose([
-        #                                     transforms.ToTensor(),
-        #                                     normalize])
-        #                                 )
-        #
-        # train_data = torch.utils.data.DataLoader(train_dataset,
-        #                                          batch_size=len(train_dataset), shuffle=False,
-        #                                          num_workers=4, pin_memory=True)
-        #
-        # test_data = torch.utils.data.DataLoader(test_dataset,
-        #                                         batch_size=len(test_dataset), shuffle=False,
-        #                                         num_workers=4, pin_memory=True)
-        #
-        # print('Data Loading ...')
-        # tr_X = next(iter(train_data))[0]
-        # tr_y = next(iter(train_data))[1]
-        # te_X = next(iter(test_data))[0]
-        # te_y = next(iter(test_data))[1]
-        #
-        # if pre_train:
-        #     pre_rate = 0.05
-        #     train_size = len(tr_X)
-        #     pre_data_size = int(train_size * pre_rate)
-        #
-        #     np.random.seed(seed)
-        #     shuffled_indices = np.random.permutation(train_size)
-        #
-        #     pre_indices = shuffled_indices[:pre_data_size]
-        #     tr_indices = shuffled_indices[pre_data_size:]
-        #
-        #     pre_X = tr_X[pre_indices]
-        #     pre_y = tr_y[pre_indices]
-        #
-        #     tr_X = tr_X[tr_indices]
-        #     tr_y = tr_y[tr_indices]
-        #
-        #     print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape, pre_X.shape, pre_y.shape)
-        #     return tr_X, tr_y, te_X, te_y, pre_X, pre_y
-        # else:
-        #     print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape)
-        #     return tr_X, tr_y, te_X, te_y, None, None
         path = '../data/cifar10.pkl.gz'
         tr_X, tr_y, te_X, te_y, pre_X, pre_y = _load_data(path, seed, torch_tensor, pre_train)
         tr_X = np.transpose(tr_X, (0, 3, 1, 2))

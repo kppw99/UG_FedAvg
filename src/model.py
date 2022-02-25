@@ -473,7 +473,7 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
         test_loss, test_accuracy = _evaluate(main_model, test_data, main_criterion)
         print("[iter {}/{}]".format(i + 1, iteration)
               + " main_loss: {:0.4f}, main_acc: {:0.4f}".format(test_loss, test_accuracy))
-        create_eval_report(main_model, x_test, y_test, printable=verbose)
+        create_eval_report(main_model, x_test, y_test, printable=verbose, dataset=dataset)
         main_logs.append([test_loss, test_accuracy])
         local_logs.append(local_log)
 
@@ -530,7 +530,7 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
         test_loss, test_accuracy = _evaluate(main_model, test_data, main_criterion)
         print("[iter {}/{}]".format(i + 1, iteration)
               + " main_loss: {:0.4f}, main_acc: {:0.4f}".format(test_loss, test_accuracy))
-        create_eval_report(main_model, x_test, y_test, printable=verbose)
+        create_eval_report(main_model, x_test, y_test, printable=verbose, dataset=dataset)
         main_logs.append([test_loss, test_accuracy])
         local_logs.append(local_log)
 
@@ -549,7 +549,23 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
     return main_model, local_model_dict
 
 
-def create_eval_report(model, x_test, y_test, printable=True):
+def create_eval_report(model, x_test, y_test, printable=True, dataset='mnist'):
+    if dataset == 'cifar10':
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+        test_transform = transforms.Compose([
+            transforms.ToPILImage(),
+            transforms.ToTensor(),
+            normalize
+        ])
+        test_dataset = CustomTensorDataset(tensors=(x_test, y_test), transform=test_transform)
+
+        test_data = torch.utils.data.DataLoader(test_dataset,
+                                                batch_size=len(x_test), shuffle=False)
+
+        x_test = next(iter(test_data))[0]
+        y_test = next(iter(test_data))[1]
+
     if use_cuda:
         x_test = x_test.float().cuda()
         y_test = y_test.cuda()
@@ -671,12 +687,6 @@ def load_model(path, dataset='mnist'):
 
 
 def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs, dataset='mnist'):
-    # if use_cuda:
-    #     tr_X = tr_X.cuda()
-    #     tr_y = tr_y.cuda()
-    #     te_X = te_X.cuda()
-    #     te_y = te_y.cuda()
-
     centralized_model = centralized_learning(
         tr_X, tr_y, te_X, te_y,
         epochs=epochs,
@@ -684,7 +694,7 @@ def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs, dataset='
         dataset=dataset
     )
 
-    create_eval_report(centralized_model, te_X, te_y)
+    create_eval_report(centralized_model, te_X, te_y, dataset=dataset)
     
     save_base = '../data/model_' + dataset
     if not os.path.exists(save_base):
@@ -752,7 +762,7 @@ def do_FL(_dataset, _iteration, _epochs, _batch_size,
             verbose=verbose
         )
 
-    create_eval_report(main_model, _te_X, _te_y)
+    create_eval_report(main_model, _te_X, _te_y, dataset=dataset)
     compare_local_and_merged_model(main_model, local_models,
                                    _te_X_dict, _te_y_dict)
     
