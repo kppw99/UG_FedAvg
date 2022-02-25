@@ -486,12 +486,13 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
     }
 
     filetime = time.strftime("_%Y%m%d-%H%M%S")
-    temp_name = '_' + str(number_of_samples) + '_' + str(iteration) + '_' + str(epochs) + '_' + str(batch_size)
+    temp_name = '_' + dataset + '_' + str(number_of_samples) + '_' + str(iteration) + '_' + str(epochs) + '_' + str(batch_size)
     temp_name += '_' + str(acc)
     filename = '../data/exp_result/' + log_name + temp_name + filetime + '.pkl'
 
     with open(filename, 'wb') as f:
         pickle.dump(log_dict, f)
+    print('\n==> SAVE LOG:', filename, end='\n\n')
 
     return main_model, local_model_dict
 
@@ -544,12 +545,13 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
     }
 
     filetime = time.strftime("_%Y%m%d-%H%M%S")
-    temp_name = '_' + str(number_of_samples) + '_' + str(iteration) + '_' + str(epochs) + '_' + str(batch_size)
+    temp_name = '_' + dataset + '_' + str(number_of_samples) + '_' + str(iteration) + '_' + str(epochs) + '_' + str(batch_size)
     temp_name += '_' + str(acc)
     filename = '../data/exp_result/' + log_name + temp_name + filetime + '.pkl'
 
     with open(filename, 'wb') as f:
         pickle.dump(log_dict, f)
+    print('\n==> SAVE LOG:', filename, end='\n\n')
 
     return main_model, local_model_dict
 
@@ -632,7 +634,7 @@ def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, d
     print("------ Training finished ------")
 
     filetime = time.strftime("_%Y%m%d-%H%M%S")
-    tempname = str(epochs) + '_' + str(batch_size) + '_' + str(central_test_accuracy)
+    tempname = dataset + '_' + str(epochs) + '_' + str(batch_size) + '_' + str(central_test_accuracy)
     filename = '../data/exp_result/' + 'central_' + tempname + filetime + '.pkl'
 
     log_dict = {
@@ -641,6 +643,7 @@ def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, d
 
     with open(filename, 'wb') as f:
         pickle.dump(log_dict, f)
+    print('\n==> SAVE LOG:', filename, end='\n\n')
 
     return model
 
@@ -674,7 +677,7 @@ def compare_local_and_merged_model(main_model, local_model_dict,
 
 def save_model(model, path):
     path = path + '.pt' # torch weight 저장을 위한 .pt 확장자 추가
-    print('==> SAVE PATH: ', path)
+    print('==> SAVE MODEL: ', path)
     torch.save(model.state_dict(), path)
 
 
@@ -708,7 +711,6 @@ def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs, dataset='
         os.makedirs(save_base)
     
     model_name = os.path.join(save_base, 'centralized_model_' + str(epochs) + '_epochs')
-    # model_name = '../data/model_' + dataset + '/centralized_model_' + str(epochs) + '_epochs'
     model_name += time.strftime("_%Y%m%d-%H%M%S")
     save_model(centralized_model, model_name)
     del centralized_model
@@ -780,7 +782,6 @@ def do_FL(_dataset, _iteration, _epochs, _batch_size,
         
     model_name = os.path.join(save_base, _log_name + '_main_model')
     
-    # model_name = '../data_' + dataset + '/model/' + _log_name + '_main_model'
     model_name += time.strftime("_%Y%m%d-%H%M%S")
     save_model(main_model, model_name)
     # Release variables
