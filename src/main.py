@@ -31,6 +31,8 @@ if __name__=='__main__':
             total_iid_cnt = total_common_cnt * len(COR_DATA_RATIO_LIST) * len(COR_LABEL_RATIO_LIST)
             total_non_iid_cnt = total_common_cnt * len(COR_MINOR_DATA_RATIO_LIST) * len(COR_MINOR_LABEL_CNT_LIST)
 
+            # UG-FedAvg 적용여부 확인
+            # default = 0 -> Original FedAvg
             for UNCERT_FEDAVG in UNCERT_FEDAVG_LIST:
                 # IID Dist
                 if DIST == 'iid':

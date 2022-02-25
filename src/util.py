@@ -739,7 +739,7 @@ def cal_asr(model, test_y_dict, valid_X_dict, valid_y_dict, target_label):
     t_cnt = 0
     for i, (y, v_x, v_y) in enumerate(zip(test_y_dict, valid_X_dict, valid_y_dict)):
         te_y = test_y_dict[y]
-        val_X = valid_X_dict[v_x]
+        val_X = valid_X_dict[v_x].float()
         val_y = valid_y_dict[v_y]
 
         pred_val_y = model(val_X).argmax(dim=1)
