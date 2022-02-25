@@ -71,11 +71,11 @@ class CNN4FL_MNIST(nn.Module):
 def _train(model, train_loader, criterion, optimizer):
     model.train()
     model = torch.nn.DataParallel(model)
-    model.cuda()
     train_loss = 0.0
     correct = 0
 
     if use_cuda:
+        model.cuda()
         criterion = criterion.cuda()
 
     for data, target in train_loader:
@@ -99,11 +99,11 @@ def _train(model, train_loader, criterion, optimizer):
 def temp_train(model, train_loader, criterion, optimizer):
     model.train()
     model = torch.nn.DataParallel(model)
-    model.cuda()
     train_loss = 0.0
     correct = 0
 
     if use_cuda:
+        model.cuda()
         criterion = criterion.cuda()
 
     for data, target in train_loader:
@@ -126,11 +126,11 @@ def temp_train(model, train_loader, criterion, optimizer):
 
 def _evaluate(model, test_loader, criterion):
     model.eval()
-    model.cuda()
     test_loss = 0.0
     correct = 0
 
     if use_cuda:
+        model.cuda()
         criterion = criterion.cuda()
 
     with torch.no_grad():
@@ -152,11 +152,11 @@ def _evaluate(model, test_loader, criterion):
 
 def temp_evaluate(model, test_loader, criterion):
     model.eval()
-    model.cuda()
     test_loss = 0.0
     correct = 0
 
     if use_cuda:
+        model.cuda()
         criterion = criterion.cuda()
 
     with torch.no_grad():
@@ -271,7 +271,8 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                         batch_size=1, shuffle=False)
             pre_model = model_dict[name_of_models[i]]
             pre_model.eval()
-            pre_model.cuda()
+            if use_cuda:
+                pre_model.cuda()
 
             new_data = list()
             new_target = list()
@@ -327,7 +328,8 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                         batch_size=1, shuffle=False)
             pre_model = model_dict[name_of_models[i]]
             pre_model.eval()
-            pre_model.cuda()
+            if use_cuda:
+                pre_model.cuda()
 
             new_data = list()
             new_target = list()
@@ -447,7 +449,8 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
             #main_model = resnet32()
             main_model = models.resnet18(pretrained=False)
             main_model.fc = nn.Linear(512, 10)
-            main_model.cuda()
+            if use_cuda:
+                main_model.cuda()
 
     main_criterion = nn.CrossEntropyLoss()
 
@@ -473,7 +476,7 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
         test_loss, test_accuracy = _evaluate(main_model, test_data, main_criterion)
         print("[iter {}/{}]".format(i + 1, iteration)
               + " main_loss: {:0.4f}, main_acc: {:0.4f}".format(test_loss, test_accuracy))
-        create_eval_report(main_model, x_test, y_test, printable=verbose, dataset=dataset)
+        _, acc = create_eval_report(main_model, x_test, y_test, printable=verbose, dataset=dataset)
         main_logs.append([test_loss, test_accuracy])
         local_logs.append(local_log)
 
@@ -484,6 +487,7 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
 
     filetime = time.strftime("_%Y%m%d-%H%M%S")
     temp_name = '_' + str(number_of_samples) + '_' + str(iteration) + '_' + str(epochs) + '_' + str(batch_size)
+    temp_name += '_' + str(acc)
     filename = '../data/exp_result/' + log_name + temp_name + filetime + '.pkl'
 
     with open(filename, 'wb') as f:
@@ -530,7 +534,7 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
         test_loss, test_accuracy = _evaluate(main_model, test_data, main_criterion)
         print("[iter {}/{}]".format(i + 1, iteration)
               + " main_loss: {:0.4f}, main_acc: {:0.4f}".format(test_loss, test_accuracy))
-        create_eval_report(main_model, x_test, y_test, printable=verbose, dataset=dataset)
+        _, acc = create_eval_report(main_model, x_test, y_test, printable=verbose, dataset=dataset)
         main_logs.append([test_loss, test_accuracy])
         local_logs.append(local_log)
 
@@ -541,6 +545,7 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
 
     filetime = time.strftime("_%Y%m%d-%H%M%S")
     temp_name = '_' + str(number_of_samples) + '_' + str(iteration) + '_' + str(epochs) + '_' + str(batch_size)
+    temp_name += '_' + str(acc)
     filename = '../data/exp_result/' + log_name + temp_name + filetime + '.pkl'
 
     with open(filename, 'wb') as f:
@@ -577,12 +582,13 @@ def create_eval_report(model, x_test, y_test, printable=True, dataset='mnist'):
     y_test = y_test.detach().cpu().numpy()
     y_pred = y_pred.detach().cpu().numpy()
     
-    report = classification_report(y_test, y_pred, digits=4)    
-    # report = classification_report(y_test.cpu(), y_pred.cpu(), digits=4)
+    report = classification_report(y_test, y_pred, digits=4)
+    accuracy = accuracy_score(y_test, y_pred)
+
     if printable:
         print(report)
 
-    return report
+    return report, accuracy
 
 
 def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, dataset='mnist'):
@@ -598,13 +604,12 @@ def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, d
             model = models.resnet18(pretrained=False)
             model.fc = nn.Linear(512, 10)
             model.cuda()
-            
         else:
             # model = resnet20()
-            #model = resnet32()
+            # model = resnet32()
             model = models.resnet18(pretrained=False)
             model.fc = nn.Linear(512, 10)
-            model.cuda()
+            # model.cuda()
 
     optimizer = torch.optim.SGD(model.parameters(), lr=0.05, momentum=0.9, weight_decay=5e-4)
     criterion = nn.CrossEntropyLoss()
@@ -627,7 +632,8 @@ def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, d
     print("------ Training finished ------")
 
     filetime = time.strftime("_%Y%m%d-%H%M%S")
-    filename = '../data/exp_result/' + 'central_' + str(epochs) + '_' + str(batch_size) + filetime + '.pkl'
+    tempname = str(epochs) + '_' + str(batch_size) + '_' + str(central_test_accuracy)
+    filename = '../data/exp_result/' + 'central_' + tempname + filetime + '.pkl'
 
     log_dict = {
         'main': logs
@@ -679,7 +685,8 @@ def load_model(path, dataset='mnist'):
         # model = resnet32()
         model = models.resnet18(pretrained=False)
         model.fc = nn.Linear(512, 10)
-        model.cuda()
+        if use_cuda:
+            model.cuda()
         
     model.load_state_dict(torch.load(path))
 
@@ -695,7 +702,7 @@ def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs, dataset='
     )
 
     create_eval_report(centralized_model, te_X, te_y, dataset=dataset)
-    
+
     save_base = '../data/model_' + dataset
     if not os.path.exists(save_base):
         os.makedirs(save_base)
