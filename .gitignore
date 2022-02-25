@@ -140,3 +140,4 @@ data/.DS_Store
 src/.DS_Store
 src/test.py
 src/*.ipynb
+src/config.py
