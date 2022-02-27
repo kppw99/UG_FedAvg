@@ -895,7 +895,16 @@ def do_iid_backdoor(total_cnt, cur_cnt,
                        uncert=uncert_fedavg,
                        verbose=False)
 
-    cal_asr(main_model, te_y_dict, val_X_dict, val_y_dict, target_label)
+    asr = cal_asr(main_model, te_y_dict, val_X_dict, val_y_dict, target_label)
+
+    filetime = time.strftime("_%Y%m%d-%H%M%S")
+    temp_name = '_' + dataset + '_' + str(local_num) + '_' + str(iteration) + '_' + str(epochs)
+    temp_name += '_' + str(batch_size) + '_' + str(asr)
+
+    filename = '../data/exp_result/' + log_name + temp_name + filetime + '.asr'
+
+    with open(filename, 'wb') as f:
+        pickle.dump(asr, f)
 
     # Release variables
     del tr_X_dict
@@ -979,7 +988,16 @@ def do_non_iid_backdoor(total_cnt, cur_cnt, tr_X, tr_y, te_X, te_y,
                        uncert_threshold=0.1,
                        verbose=False)
 
-    cal_asr(main_model, te_y_dict, val_X_dict, val_y_dict, target_label)
+    asr = cal_asr(main_model, te_y_dict, val_X_dict, val_y_dict, target_label)
+
+    filetime = time.strftime("_%Y%m%d-%H%M%S")
+    temp_name = '_' + dataset + '_' + str(local_num) + '_' + str(iteration) + '_' + str(epochs)
+    temp_name += '_' + str(batch_size) + '_' + str(asr)
+
+    filename = '../data/exp_result/' + log_name + temp_name + filetime + '.asr'
+
+    with open(filename, 'wb') as f:
+        pickle.dump(asr, f)
 
     # Release variables
     del tr_X_dict
