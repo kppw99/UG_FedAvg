@@ -158,6 +158,17 @@ def _add_bd_pattern_cifar10(x, start_idx=1, size=5, show=False):
     return np.transpose(temp_x, (2, 0, 1))
 
 
+def _add_bd_pattern_fmnist(x, start_idx=1, size=5, show=False):
+    # trigger pattern (plus)
+    for i in range(start_idx, start_idx + size):
+        x[i][(start_idx + size) // 2] = 255.0  # vertical line
+        x[(start_idx + size) // 2][i] = 255.0  # horizontal line
+    if show is True:
+        plt.imshow(x)
+        plt.show()
+    return x
+
+
 def _create_corrupted_subsamples(sample_dict, x_data, y_data, x_name, y_name,
                                  cor_local_ratio=1.0, cor_label_ratio=0.2, cor_data_ratio=0.5, mode=1):
     x_data_dict = dict()
@@ -248,6 +259,8 @@ def _create_backdoor_subsamples(sample_dict, x_data, y_data, x_name, y_name,
                 for idx in corrupted_idx:
                     if dataset=='mnist':
                         x_info[idx] = _add_bd_pattern(x_info[idx])
+                    elif dataset=='fmnist':
+                        x_info[idx] = _add_bd_pattern_fmnist(x_info[idx])
                     elif dataset=='cifar10':
                         x_info[idx] = _add_bd_pattern_cifar10(x_info[idx])
         if torch.cuda.is_available():
@@ -294,6 +307,8 @@ def _create_backdoor_subsamples2(sample_dict, x_data, y_data, x_name, y_name,
                     for idx in corrupted_idx:
                         if dataset == 'mnist':
                             x_info[idx] = _add_bd_pattern(x_info[idx])
+                        elif dataset == 'fmnist':
+                            x_info[idx] = _add_bd_pattern_fmnist(x_info[idx])
                         elif dataset == 'cifar10':
                             x_info[idx] = _add_bd_pattern_cifar10(x_info[idx])
                         major_cnt += 1
@@ -307,6 +322,8 @@ def _create_backdoor_subsamples2(sample_dict, x_data, y_data, x_name, y_name,
                 for idx in corrupted_idx:
                     if dataset == 'mnist':
                         x_info[idx] = _add_bd_pattern(x_info[idx])
+                    elif dataset=='fmnist':
+                        x_info[idx] = _add_bd_pattern_fmnist(x_info[idx])
                     elif dataset == 'cifar10':
                         x_info[idx] = _add_bd_pattern_cifar10(x_info[idx])
                     minor_cnt += 1
@@ -463,8 +480,8 @@ def _load_data(path='../data/mnist.pkl.gz', seed=1, torch_tensor=True, pre_train
 
 
 def load_data(data='mnist', seed=1, torch_tensor=True, pre_train=False):
-    if data=='mnist':
-        path='../data/mnist.pkl.gz'
+    if data=='mnist' or data=='fmnist':
+        path='../data/' + data + '.pkl.gz'
         tr_X, tr_y, te_X, te_y, pre_X, pre_y = _load_data(path, seed, torch_tensor, pre_train)
         if pre_train:
             print(tr_X.shape, tr_y.shape, te_X.shape, te_y.shape, pre_X.shape, pre_y.shape)
@@ -643,6 +660,20 @@ def create_dataloader(x_train, y_train, x_test, y_test, batch_size, dataset='mni
             train_data = DataLoader(TensorDataset(x_train, y_train), batch_size=batch_size, shuffle=True)
         if x_test != None and y_test != None:
             test_data = DataLoader(TensorDataset(x_test, y_test), batch_size=1)
+    elif dataset=='fmnist':
+        workers=4
+        transform = transforms.Compose([transforms.ToPILImage(), transforms.Resize((35, 35)), transforms.ToTensor()])
+
+        if x_train != None and y_train != None:
+            train_dataset = CustomTensorDataset(tensors=(x_train, y_train), transform=transform)
+            train_data = torch.utils.data.DataLoader(train_dataset,
+                                                     batch_size=batch_size, shuffle=True,
+                                                     num_workers=workers, pin_memory=True)
+        if x_test != None and y_test != None:
+            test_dataset = CustomTensorDataset(tensors=(x_test, y_test), transform=transform)
+            test_data = torch.utils.data.DataLoader(test_dataset,
+                                                    batch_size=batch_size, shuffle=False,
+                                                    num_workers=workers, pin_memory=True)
     elif dataset=='cifar10':
         workers=4
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -676,13 +707,38 @@ def cal_entropy(data):
     return entropy(data, base=len(data))
 
 
-def cal_asr(model, test_y_dict, valid_X_dict, valid_y_dict, target_label):
+def cal_asr(model, test_y_dict, valid_X_dict, valid_y_dict, target_label, dataset='mnist'):
     s_cnt = 0
     t_cnt = 0
     for i, (y, v_x, v_y) in enumerate(zip(test_y_dict, valid_X_dict, valid_y_dict)):
         te_y = test_y_dict[y]
         val_X = valid_X_dict[v_x].float()
         val_y = valid_y_dict[v_y]
+
+        if dataset == 'cifar10':
+            normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+            test_transform = transforms.Compose([
+                transforms.ToPILImage(),
+                transforms.ToTensor(),
+                normalize
+            ])
+            val_dataset = CustomTensorDataset(tensors=(val_X, val_y), transform=test_transform)
+
+            val_data = torch.utils.data.DataLoader(val_dataset,
+                                                    batch_size=len(val_X), shuffle=False)
+
+            val_X = next(iter(val_data))[0]
+            val_y = next(iter(val_data))[1]
+        elif dataset == 'fmnist':
+            transform = transforms.Compose(
+                [transforms.ToPILImage(), transforms.Resize((35, 35)), transforms.ToTensor()])
+            val_dataset = CustomTensorDataset(tensors=(val_X, val_y), transform=transform)
+
+            val_data = torch.utils.data.DataLoader(val_dataset, batch_size=len(val_X), shuffle=False)
+
+            val_X = next(iter(val_data))[0]
+            val_y = next(iter(val_data))[1]
 
         pred_val_y = model(val_X).argmax(dim=1)
         for idx in range(len(te_y)):

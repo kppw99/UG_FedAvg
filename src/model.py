@@ -68,6 +68,46 @@ class CNN4FL_MNIST(nn.Module):
         return F.softmax(out, dim=1)
 
 
+class Lenet5(torch.nn.Module):
+    def __init__(self):
+        super(Lenet5, self).__init__()
+
+        self.l1 = torch.nn.Conv2d(1, 6, kernel_size=5, padding=0, stride=1)
+        self.x1 = torch.nn.Tanh()
+        self.l2 = torch.nn.AvgPool2d(kernel_size=2, padding=0, stride=2)
+
+        self.l3 = torch.nn.Conv2d(6, 16, kernel_size=5, padding=0, stride=1)
+        self.x2 = torch.nn.Tanh()
+        self.l4 = torch.nn.AvgPool2d(kernel_size=2, padding=0, stride=2)
+
+        self.l5 = torch.nn.Flatten()
+
+        self.l6 = torch.nn.Linear(16 * 5 * 5, 120, bias=True)
+        self.x3 = torch.nn.Tanh()
+
+        self.l7 = torch.nn.Linear(120, 84, bias=True)
+        self.x4 = torch.nn.Tanh()
+
+        self.l8 = torch.nn.Linear(84, 10, bias=True)
+
+    def forward(self, x):
+        out = self.l1(x)
+        out = self.x1(out)
+        out = self.l2(out)
+        out = self.l3(out)
+        out = self.x2(out)
+        out = self.l4(out)
+
+        out = out.view(out.size(0), -1)
+
+        out = self.l6(out)
+        out = self.x3(out)
+        out = self.l7(out)
+        out = self.x4(out)
+        out = self.l8(out)
+        return out
+
+
 def _train(model, train_loader, criterion, optimizer):
     model.train()
     model = torch.nn.DataParallel(model)
@@ -190,7 +230,7 @@ def _sync_model(main_model, model_dict):
 
 def _train_local_model(model_dict, criterion_dict, optimizer_dict,
                        x_train_dict, y_train_dict, x_test_dict, y_test_dict,
-                       number_of_samples, epochs, batch_size, verbose=True):
+                       number_of_samples, epochs, batch_size, verbose=True, dataset='mnist'):
     name_of_x_train_sets = list(x_train_dict.keys())
     name_of_y_train_sets = list(y_train_dict.keys())
     name_of_x_test_sets = list(x_test_dict.keys())
@@ -203,12 +243,60 @@ def _train_local_model(model_dict, criterion_dict, optimizer_dict,
     logs = list()
     if verbose is False:
         for i in tqdm(range(number_of_samples), desc='Train local models'):
-            train_data = DataLoader(TensorDataset(x_train_dict[name_of_x_train_sets[i]],
-                                                  y_train_dict[name_of_y_train_sets[i]]),
-                                    batch_size=batch_size, shuffle=True)
+            if dataset=='mnist':
+                train_data = DataLoader(TensorDataset(x_train_dict[name_of_x_train_sets[i]],
+                                                      y_train_dict[name_of_y_train_sets[i]]),
+                                        batch_size=batch_size, shuffle=True)
 
-            test_data = DataLoader(TensorDataset(x_test_dict[name_of_x_test_sets[i]],
-                                                 y_test_dict[name_of_y_test_sets[i]]), batch_size=1)
+                test_data = DataLoader(TensorDataset(x_test_dict[name_of_x_test_sets[i]],
+                                                     y_test_dict[name_of_y_test_sets[i]]), batch_size=1)
+            elif dataset=='fmnist':
+                workers = 4
+                transform = transforms.Compose([transforms.ToPILImage(),
+                                                transforms.Resize((35, 35)),
+                                                transforms.ToTensor()])
+
+                train_dataset = CustomTensorDataset(tensors=(x_train_dict[name_of_x_train_sets[i]],
+                                                             y_train_dict[name_of_y_train_sets[i]]),
+                                                    transform=transform)
+                train_data = torch.utils.data.DataLoader(train_dataset,
+                                                         batch_size=batch_size, shuffle=True,
+                                                         num_workers=workers, pin_memory=True)
+
+                test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
+                                                            y_test_dict[name_of_y_test_sets[i]]),
+                                                   transform=transform)
+                test_data = torch.utils.data.DataLoader(test_dataset,
+                                                        batch_size=batch_size, shuffle=False,
+                                                        num_workers=workers, pin_memory=True)
+            elif dataset=='cifar10':
+                workers = 4
+                normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+                train_transform = transforms.Compose([transforms.ToPILImage(),
+                                                      transforms.RandomHorizontalFlip(),
+                                                      transforms.RandomCrop(32, 4),
+                                                      transforms.ToTensor(),
+                                                      normalize
+                                                      ])
+
+                test_transform = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
+                                                     normalize
+                                                     ])
+
+                train_dataset = CustomTensorDataset(tensors=(x_train_dict[name_of_x_train_sets[i]],
+                                                             y_train_dict[name_of_y_train_sets[i]]),
+                                                    transform=train_transform)
+                train_data = torch.utils.data.DataLoader(train_dataset,
+                                                         batch_size=batch_size, shuffle=True,
+                                                         num_workers=workers, pin_memory=True)
+
+                test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
+                                                            y_test_dict[name_of_y_test_sets[i]]),
+                                                   transform=test_transform)
+                test_data = torch.utils.data.DataLoader(test_dataset,
+                                                        batch_size=batch_size, shuffle=False,
+                                                        num_workers=workers, pin_memory=True)
 
             model = model_dict[name_of_models[i]]
             criterion = criterion_dict[name_of_criterions[i]]
@@ -222,12 +310,60 @@ def _train_local_model(model_dict, criterion_dict, optimizer_dict,
             logs.append(epoch_logs)
     else:
         for i in range(number_of_samples):
-            train_data = DataLoader(TensorDataset(x_train_dict[name_of_x_train_sets[i]],
-                                                  y_train_dict[name_of_y_train_sets[i]]),
-                                    batch_size=batch_size, shuffle=True)
+            if dataset == 'mnist':
+                train_data = DataLoader(TensorDataset(x_train_dict[name_of_x_train_sets[i]],
+                                                      y_train_dict[name_of_y_train_sets[i]]),
+                                        batch_size=batch_size, shuffle=True)
 
-            test_data = DataLoader(TensorDataset(x_test_dict[name_of_x_test_sets[i]],
-                                                 y_test_dict[name_of_y_test_sets[i]]), batch_size=1)
+                test_data = DataLoader(TensorDataset(x_test_dict[name_of_x_test_sets[i]],
+                                                     y_test_dict[name_of_y_test_sets[i]]), batch_size=1)
+            elif dataset == 'fmnist':
+                workers = 4
+                transform = transforms.Compose([transforms.ToPILImage(),
+                                                transforms.Resize((35, 35)),
+                                                transforms.ToTensor()])
+
+                train_dataset = CustomTensorDataset(tensors=(x_train_dict[name_of_x_train_sets[i]],
+                                                             y_train_dict[name_of_y_train_sets[i]]),
+                                                    transform=transform)
+                train_data = torch.utils.data.DataLoader(train_dataset,
+                                                         batch_size=batch_size, shuffle=True,
+                                                         num_workers=workers, pin_memory=True)
+
+                test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
+                                                            y_test_dict[name_of_y_test_sets[i]]),
+                                                   transform=transform)
+                test_data = torch.utils.data.DataLoader(test_dataset,
+                                                        batch_size=batch_size, shuffle=False,
+                                                        num_workers=workers, pin_memory=True)
+            elif dataset == 'cifar10':
+                workers = 4
+                normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+                train_transform = transforms.Compose([transforms.ToPILImage(),
+                                                      transforms.RandomHorizontalFlip(),
+                                                      transforms.RandomCrop(32, 4),
+                                                      transforms.ToTensor(),
+                                                      normalize
+                                                      ])
+
+                test_transform = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
+                                                     normalize
+                                                     ])
+
+                train_dataset = CustomTensorDataset(tensors=(x_train_dict[name_of_x_train_sets[i]],
+                                                             y_train_dict[name_of_y_train_sets[i]]),
+                                                    transform=train_transform)
+                train_data = torch.utils.data.DataLoader(train_dataset,
+                                                         batch_size=batch_size, shuffle=True,
+                                                         num_workers=workers, pin_memory=True)
+
+                test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
+                                                            y_test_dict[name_of_y_test_sets[i]]),
+                                                   transform=test_transform)
+                test_data = torch.utils.data.DataLoader(test_dataset,
+                                                        batch_size=batch_size, shuffle=False,
+                                                        num_workers=workers, pin_memory=True)
 
             model = model_dict[name_of_models[i]]
             criterion = criterion_dict[name_of_criterions[i]]
@@ -253,7 +389,7 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                               x_train_dict, y_train_dict, x_test_dict, y_test_dict,
                               number_of_samples, epochs, batch_size,
                               uncert_threshold=0.2,
-                              verbose=True):
+                              verbose=True, dataset='mnist'):
     name_of_x_train_sets = list(x_train_dict.keys())
     name_of_y_train_sets = list(y_train_dict.keys())
     name_of_x_test_sets = list(x_test_dict.keys())
@@ -415,8 +551,10 @@ def _create_local_models(dataset='mnist', number_of_samples=10, lr=0.01, momentu
         model_name = 'model' + str(i)
         if dataset=='mnist':
             model_info = CNN4FL_MNIST()
+        elif dataset=='fmnist':
+            model_info = Lenet5()
         elif dataset=='cifar10':
-            #model_info = resnet32()
+            # model_info = resnet32()
             model_info = models.resnet18(pretrained=False)
             model_info.fc = nn.Linear(512, 10)
         
@@ -445,8 +583,10 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
     else:
         if dataset=='mnist':
             main_model = CNN4FL_MNIST()
+        elif dataset=='fmnist':
+            main_model = Lenet5()
         elif dataset=='cifar10':
-            #main_model = resnet32()
+            # main_model = resnet32()
             main_model = models.resnet18(pretrained=False)
             main_model.fc = nn.Linear(512, 10)
             if use_cuda:
@@ -459,7 +599,7 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
     if use_cuda:
         x_test = x_test.cuda()
         y_test = y_test.cuda()
-    _, test_data = create_dataloader(None, None, x_test, y_test, batch_size)
+    _, test_data = create_dataloader(None, None, x_test, y_test, batch_size, dataset=dataset)
 
     main_logs = list()
     local_logs = list()
@@ -470,7 +610,7 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
         local_log = _train_local_model(local_model_dict, local_criterion_dict, local_optimizer_dict,
                                        x_train_dict, y_train_dict, x_test_dict, y_test_dict,
                                        number_of_samples, epochs=epochs, batch_size=batch_size,
-                                       verbose=verbose)
+                                       verbose=verbose, dataset=dataset)
 
         main_model = _update_main_model(main_model, local_model_dict)
         test_loss, test_accuracy = _evaluate(main_model, test_data, main_criterion)
@@ -513,7 +653,7 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
     if use_cuda:
         x_test = x_test.cuda()
         y_test = y_test.cuda()
-    _, test_data = create_dataloader(None, None, x_test, y_test, batch_size)
+    _, test_data = create_dataloader(None, None, x_test, y_test, batch_size, dataset=dataset)
 
     main_logs = list()
     local_logs = list()
@@ -529,7 +669,8 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
                                               epochs=epochs,
                                               batch_size=batch_size,
                                               uncert_threshold=uncert_threshold,
-                                              verbose=verbose)
+                                              verbose=verbose,
+                                              dataset=dataset)
 
         main_model = _update_main_model(main_model, local_model_dict)
         test_loss, test_accuracy = _evaluate(main_model, test_data, main_criterion)
@@ -572,6 +713,14 @@ def create_eval_report(model, x_test, y_test, printable=True, dataset='mnist'):
 
         x_test = next(iter(test_data))[0]
         y_test = next(iter(test_data))[1]
+    elif dataset=='fmnist':
+        transform = transforms.Compose([transforms.ToPILImage(), transforms.Resize((35, 35)), transforms.ToTensor()])
+        test_dataset = CustomTensorDataset(tensors=(x_test, y_test), transform=transform)
+
+        test_data = torch.utils.data.DataLoader(test_dataset, batch_size=len(x_test), shuffle=False)
+
+        x_test = next(iter(test_data))[0]
+        y_test = next(iter(test_data))[1]
 
     if use_cuda:
         x_test = x_test.float().cuda()
@@ -599,6 +748,11 @@ def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, d
             model = CNN4FL_MNIST().cuda()
         else:
             model = CNN4FL_MNIST()
+    elif dataset=='fmnist':
+        if use_cuda:
+            model = Lenet5().cuda()
+        else:
+            model = Lenet5()
     elif dataset=='cifar10':
         if use_cuda:
             # model = resnet20().cuda() # FL 세팅에서는 resnet32를, Central 상황에서는 resnet20으로 들어가있어 32로 통일하였습니다
@@ -650,7 +804,7 @@ def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, d
 
 def compare_local_and_merged_model(main_model, local_model_dict,
                                    x_test_dict, y_test_dict,
-                                   printable=True):
+                                   printable=True, dataset='mnist'):
     number_of_samples = len(local_model_dict)
     accuracy_table = pd.DataFrame(data=np.zeros((number_of_samples, 3)),
                                   columns=['local', 'local_ind_model', 'merged_main_model'])
@@ -658,6 +812,31 @@ def compare_local_and_merged_model(main_model, local_model_dict,
         local_model = local_model_dict[m]
         x_test = x_test_dict[x].float()
         y_test = y_test_dict[y]
+
+        if dataset == 'cifar10':
+            normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+            test_transform = transforms.Compose([
+                transforms.ToPILImage(),
+                transforms.ToTensor(),
+                normalize
+            ])
+            test_dataset = CustomTensorDataset(tensors=(x_test, y_test), transform=test_transform)
+
+            test_data = torch.utils.data.DataLoader(test_dataset,
+                                                    batch_size=len(x_test), shuffle=False)
+
+            x_test = next(iter(test_data))[0]
+            y_test = next(iter(test_data))[1]
+        elif dataset == 'fmnist':
+            transform = transforms.Compose(
+                [transforms.ToPILImage(), transforms.Resize((35, 35)), transforms.ToTensor()])
+            test_dataset = CustomTensorDataset(tensors=(x_test, y_test), transform=transform)
+
+            test_data = torch.utils.data.DataLoader(test_dataset, batch_size=len(x_test), shuffle=False)
+
+            x_test = next(iter(test_data))[0]
+            y_test = next(iter(test_data))[1]
 
         y_pred = local_model(x_test).argmax(dim=1)
         local_accuracy = accuracy_score(y_pred.cpu(), y_test.cpu())
@@ -683,7 +862,13 @@ def save_model(model, path):
 
 def load_model(path, dataset='mnist'):
     if dataset=='mnist':
-        model = CNN4FL_MNIST().cuda()
+        model = CNN4FL_MNIST()
+        if use_cuda:
+            model.cuda()
+    elif dataset=='fmnist':
+        model = Lenet5()
+        if use_cuda:
+            model.cuda()
     elif dataset=='cifar10':
         # model = resnet32()
         model = models.resnet18(pretrained=False)
@@ -773,7 +958,7 @@ def do_FL(_dataset, _iteration, _epochs, _batch_size,
 
     create_eval_report(main_model, _te_X, _te_y, dataset=dataset)
     compare_local_and_merged_model(main_model, local_models,
-                                   _te_X_dict, _te_y_dict)
+                                   _te_X_dict, _te_y_dict, dataset=dataset)
     
     save_base = '../data/model_' + dataset
 
@@ -895,7 +1080,8 @@ def do_iid_backdoor(total_cnt, cur_cnt,
                        uncert=uncert_fedavg,
                        verbose=False)
 
-    asr = cal_asr(main_model, te_y_dict, val_X_dict, val_y_dict, target_label)
+    asr = cal_asr(main_model, te_y_dict, val_X_dict, val_y_dict, target_label,
+                  dataset=dataset)
 
     filetime = time.strftime("_%Y%m%d-%H%M%S")
     temp_name = '_' + dataset + '_' + str(local_num) + '_' + str(iteration) + '_' + str(epochs)
@@ -988,7 +1174,8 @@ def do_non_iid_backdoor(total_cnt, cur_cnt, tr_X, tr_y, te_X, te_y,
                        uncert_threshold=0.1,
                        verbose=False)
 
-    asr = cal_asr(main_model, te_y_dict, val_X_dict, val_y_dict, target_label)
+    asr = cal_asr(main_model, te_y_dict, val_X_dict, val_y_dict, target_label,
+                  dataset=dataset)
 
     filetime = time.strftime("_%Y%m%d-%H%M%S")
     temp_name = '_' + dataset + '_' + str(local_num) + '_' + str(iteration) + '_' + str(epochs)
