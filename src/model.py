@@ -402,9 +402,40 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
     logs = list()
     if verbose is False:
         for i in tqdm(range(number_of_samples), desc='Train local models'):
-            train_pre_data = DataLoader(TensorDataset(x_train_dict[name_of_x_train_sets[i]],
-                                                      y_train_dict[name_of_y_train_sets[i]]),
-                                        batch_size=1, shuffle=False)
+            if dataset == 'mnist':
+                train_pre_data = DataLoader(TensorDataset(x_train_dict[name_of_x_train_sets[i]],
+                                                          y_train_dict[name_of_y_train_sets[i]]),
+                                            batch_size=1, shuffle=False)
+            elif dataset == 'fmnist':
+                workers = 4
+                transform = transforms.Compose([transforms.ToPILImage(),
+                                                transforms.Resize((35, 35)),
+                                                transforms.ToTensor()])
+
+                train_dataset = CustomTensorDataset(tensors=(x_train_dict[name_of_x_train_sets[i]],
+                                                             y_train_dict[name_of_y_train_sets[i]]),
+                                                    transform=transform)
+                train_pre_data = torch.utils.data.DataLoader(train_dataset,
+                                                         batch_size=1, shuffle=False,
+                                                         num_workers=workers, pin_memory=True)
+            elif dataset == 'cifar10':
+                workers = 4
+                normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+                train_transform = transforms.Compose([transforms.ToPILImage(),
+                                                      transforms.RandomHorizontalFlip(),
+                                                      transforms.RandomCrop(32, 4),
+                                                      transforms.ToTensor(),
+                                                      normalize
+                                                      ])
+
+                train_dataset = CustomTensorDataset(tensors=(x_train_dict[name_of_x_train_sets[i]],
+                                                             y_train_dict[name_of_y_train_sets[i]]),
+                                                    transform=train_transform)
+                train_pre_data = torch.utils.data.DataLoader(train_dataset,
+                                                         batch_size=1, shuffle=False,
+                                                         num_workers=workers, pin_memory=True)
+
             pre_model = model_dict[name_of_models[i]]
             pre_model.eval()
             if use_cuda:
@@ -440,12 +471,58 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
 
             print(true_cnt, false_cnt)
 
-            train_data = DataLoader(TensorDataset(new_data, new_target),
-                                    batch_size=batch_size, shuffle=True)
+            if dataset == 'mnist':
+                train_data = DataLoader(TensorDataset(new_data, new_target),
+                                        batch_size=batch_size, shuffle=True)
 
-            test_data = DataLoader(TensorDataset(x_test_dict[name_of_x_test_sets[i]],
-                                                 y_test_dict[name_of_y_test_sets[i]]),
-                                   batch_size=1)
+                test_data = DataLoader(TensorDataset(x_test_dict[name_of_x_test_sets[i]],
+                                                     y_test_dict[name_of_y_test_sets[i]]),
+                                       batch_size=1)
+            elif dataset == 'fmnist':
+                workers = 4
+                transform = transforms.Compose([transforms.ToPILImage(),
+                                                transforms.Resize((35, 35)),
+                                                transforms.ToTensor()])
+
+                train_dataset = CustomTensorDataset(tensors=(new_data, new_target),
+                                                    transform=transform)
+                train_data = torch.utils.data.DataLoader(train_dataset,
+                                                         batch_size=batch_size, shuffle=True,
+                                                         num_workers=workers, pin_memory=True)
+
+                test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
+                                                            y_test_dict[name_of_y_test_sets[i]]),
+                                                   transform=transform)
+                test_data = torch.utils.data.DataLoader(test_dataset,
+                                                        batch_size=1, shuffle=False,
+                                                        num_workers=workers, pin_memory=True)
+            elif dataset == 'cifar10':
+                workers = 4
+                normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+                train_transform = transforms.Compose([transforms.ToPILImage(),
+                                                      transforms.RandomHorizontalFlip(),
+                                                      transforms.RandomCrop(32, 4),
+                                                      transforms.ToTensor(),
+                                                      normalize
+                                                      ])
+
+                test_transform = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
+                                                     normalize
+                                                     ])
+
+                train_dataset = CustomTensorDataset(tensors=(new_data, new_target),
+                                                    transform=train_transform)
+                train_data = torch.utils.data.DataLoader(train_dataset,
+                                                         batch_size=batch_size, shuffle=True,
+                                                         num_workers=workers, pin_memory=True)
+
+                test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
+                                                            y_test_dict[name_of_y_test_sets[i]]),
+                                                   transform=test_transform)
+                test_data = torch.utils.data.DataLoader(test_dataset,
+                                                        batch_size=1, shuffle=False,
+                                                        num_workers=workers, pin_memory=True)
 
             model = model_dict[name_of_models[i]]
             criterion = criterion_dict[name_of_criterions[i]]
@@ -459,9 +536,40 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
             logs.append(epoch_logs)
     else:
         for i in range(number_of_samples):
-            train_pre_data = DataLoader(TensorDataset(x_train_dict[name_of_x_train_sets[i]],
-                                                      y_train_dict[name_of_y_train_sets[i]]),
-                                        batch_size=1, shuffle=False)
+            if dataset == 'mnist':
+                train_pre_data = DataLoader(TensorDataset(x_train_dict[name_of_x_train_sets[i]],
+                                                          y_train_dict[name_of_y_train_sets[i]]),
+                                            batch_size=1, shuffle=False)
+            elif dataset == 'fmnist':
+                workers = 4
+                transform = transforms.Compose([transforms.ToPILImage(),
+                                                transforms.Resize((35, 35)),
+                                                transforms.ToTensor()])
+
+                train_dataset = CustomTensorDataset(tensors=(x_train_dict[name_of_x_train_sets[i]],
+                                                             y_train_dict[name_of_y_train_sets[i]]),
+                                                    transform=transform)
+                train_pre_data = torch.utils.data.DataLoader(train_dataset,
+                                                             batch_size=1, shuffle=False,
+                                                             num_workers=workers, pin_memory=True)
+            elif dataset == 'cifar10':
+                workers = 4
+                normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+                train_transform = transforms.Compose([transforms.ToPILImage(),
+                                                      transforms.RandomHorizontalFlip(),
+                                                      transforms.RandomCrop(32, 4),
+                                                      transforms.ToTensor(),
+                                                      normalize
+                                                      ])
+
+                train_dataset = CustomTensorDataset(tensors=(x_train_dict[name_of_x_train_sets[i]],
+                                                             y_train_dict[name_of_y_train_sets[i]]),
+                                                    transform=train_transform)
+                train_pre_data = torch.utils.data.DataLoader(train_dataset,
+                                                             batch_size=1, shuffle=False,
+                                                             num_workers=workers, pin_memory=True)
+
             pre_model = model_dict[name_of_models[i]]
             pre_model.eval()
             if use_cuda:
@@ -497,11 +605,58 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
 
             print(true_cnt, false_cnt)
 
-            train_data = DataLoader(TensorDataset(new_data, new_target),
-                                    batch_size=batch_size, shuffle=True)
+            if dataset == 'mnist':
+                train_data = DataLoader(TensorDataset(new_data, new_target),
+                                        batch_size=batch_size, shuffle=True)
 
-            test_data = DataLoader(TensorDataset(x_test_dict[name_of_x_test_sets[i]],
-                                                 y_test_dict[name_of_y_test_sets[i]]), batch_size=1)
+                test_data = DataLoader(TensorDataset(x_test_dict[name_of_x_test_sets[i]],
+                                                     y_test_dict[name_of_y_test_sets[i]]),
+                                       batch_size=1)
+            elif dataset == 'fmnist':
+                workers = 4
+                transform = transforms.Compose([transforms.ToPILImage(),
+                                                transforms.Resize((35, 35)),
+                                                transforms.ToTensor()])
+
+                train_dataset = CustomTensorDataset(tensors=(new_data, new_target),
+                                                    transform=transform)
+                train_data = torch.utils.data.DataLoader(train_dataset,
+                                                         batch_size=batch_size, shuffle=True,
+                                                         num_workers=workers, pin_memory=True)
+
+                test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
+                                                            y_test_dict[name_of_y_test_sets[i]]),
+                                                   transform=transform)
+                test_data = torch.utils.data.DataLoader(test_dataset,
+                                                        batch_size=1, shuffle=False,
+                                                        num_workers=workers, pin_memory=True)
+            elif dataset == 'cifar10':
+                workers = 4
+                normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+                train_transform = transforms.Compose([transforms.ToPILImage(),
+                                                      transforms.RandomHorizontalFlip(),
+                                                      transforms.RandomCrop(32, 4),
+                                                      transforms.ToTensor(),
+                                                      normalize
+                                                      ])
+
+                test_transform = transforms.Compose([transforms.ToPILImage(), transforms.ToTensor(),
+                                                     normalize
+                                                     ])
+
+                train_dataset = CustomTensorDataset(tensors=(new_data, new_target),
+                                                    transform=train_transform)
+                train_data = torch.utils.data.DataLoader(train_dataset,
+                                                         batch_size=batch_size, shuffle=True,
+                                                         num_workers=workers, pin_memory=True)
+
+                test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
+                                                            y_test_dict[name_of_y_test_sets[i]]),
+                                                   transform=test_transform)
+                test_data = torch.utils.data.DataLoader(test_dataset,
+                                                        batch_size=1, shuffle=False,
+                                                        num_workers=workers, pin_memory=True)
 
             model = model_dict[name_of_models[i]]
             criterion = criterion_dict[name_of_criterions[i]]
@@ -576,10 +731,21 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
                        dataset='mnist', pre_train=True,
                        verbose=False):
     if pre_train:
-        if use_cuda:
-            main_model = load_model('../data/model/pre_train_model', dataset=dataset)
-        else:
-            main_model = load_model('../data/model/pre_train_model_no_cuda', dataset=dataset)
+        if dataset == 'mnist':
+            if use_cuda:
+                main_model = load_model('../data/model_mnist/pre_train_model', dataset=dataset)
+            else:
+                main_model = load_model('../data/model_mnist/pre_train_model_no_cuda', dataset=dataset)
+        elif dataset == 'fmnist':
+            if use_cuda:
+                main_model = load_model('../data/model_fmnist/pre_train_model', dataset=dataset)
+            else:
+                main_model = load_model('../data/model_fmnist/pre_train_model_no_cuda', dataset=dataset)
+        elif dataset == 'cifar10':
+            if use_cuda:
+                main_model = load_model('../data/model_cifar10/pre_train_model', dataset=dataset)
+            else:
+                main_model = load_model('../data/model_cifar10/pre_train_model_no_cuda', dataset=dataset)
     else:
         if dataset=='mnist':
             main_model = CNN4FL_MNIST()
@@ -641,10 +807,21 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
                               number_of_samples, iteration, epochs, batch_size, log_name,
                               dataset='mnist', uncert_threshold=0.2,
                               verbose=False):
-    if use_cuda:
-        main_model = load_model('../data/model/pre_train_model', dataset=dataset)
-    else:
-        main_model = load_model('../data/model/pre_train_model_no_cuda', dataset=dataset)
+    if dataset=='mnist':
+        if use_cuda:
+            main_model = load_model('../data/model_mnist/pre_train_model', dataset=dataset)
+        else:
+            main_model = load_model('../data/model_mnist/pre_train_model_no_cuda', dataset=dataset)
+    elif dataset=='fmnist':
+        if use_cuda:
+            main_model = load_model('../data/model_fmnist/pre_train_model', dataset=dataset)
+        else:
+            main_model = load_model('../data/model_fmnist/pre_train_model_no_cuda', dataset=dataset)
+    elif dataset=='cifar10':
+        if use_cuda:
+            main_model = load_model('../data/model_cifar10/pre_train_model', dataset=dataset)
+        else:
+            main_model = load_model('../data/model_cifar10/pre_train_model_no_cuda', dataset=dataset)
 
     main_criterion = nn.CrossEntropyLoss()
 
