@@ -131,6 +131,7 @@ dmypy.json
 # User define
 .idea/*
 src/ref/
+data/cifar10.pkl.gz
 data/log/*
 data/exp_result/*
 data/model/*
@@ -140,4 +141,6 @@ data/.DS_Store
 src/.DS_Store
 src/test.py
 src/*.ipynb
-src/config.py
+src/mnist_config.py
+src/fmnist_config.py
+src/cifar10_config.py
