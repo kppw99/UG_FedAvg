@@ -129,6 +129,7 @@ dmypy.json
 .pyre/
 
 # User define
+*.pt
 .idea/*
 src/ref/
 data/cifar10.pkl.gz
