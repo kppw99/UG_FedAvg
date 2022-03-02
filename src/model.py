@@ -762,7 +762,7 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
                 main_model = load_model('../data/model_mnist/pre_train_model_no_cuda', dataset=dataset)
         elif dataset == 'fmnist':
             if use_cuda:
-                main_model = load_model('../data/model_fmnist/pre_train_model.pt', dataset=dataset)
+                main_model = load_model('../data/model_fmnist/pre_train_model', dataset=dataset)
             else:
                 main_model = load_model('../data/model_fmnist/pre_train_model_no_cuda', dataset=dataset)
         elif dataset == 'cifar10':
