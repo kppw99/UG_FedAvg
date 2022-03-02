@@ -1,7 +1,12 @@
 # Uncertainty_Guided_FedAvg
 This project is underway. We will update the README file after finishing this project.
 
-### Prerequisite (for configure)
+### Prerequisite 
+#### Download dataset (MUST download the dataset to the data directory)
+- MNIST: [mnist.pkl.gz](https://drive.google.com/file/d/1Md3dx7gpG6K5ZQcmckz6dDacu3wnODDS/view?usp=sharing)
+- Fashion-MNIST: [fmnist.pkl.gz](https://drive.google.com/file/d/1AFlRmULhfO1Vio-2vKJZ3aTtxBKKZD63/view?usp=sharing)
+- CIFAR10: [cifar10.pkl.gz](https://drive.google.com/file/d/1r_ik_Uuhp0eePlPUJtrXVFUF3bOvFa15/view?usp=sharing)
+#### For configuration file of dataset
 - mnist_config.py
 - fmnist_config.py
 - cifar10_config.py
