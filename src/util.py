@@ -1,6 +1,7 @@
 import gzip
 import random
 import pickle
+import argparse
 import numpy as np
 import pandas as pd
 
@@ -767,6 +768,22 @@ def adjust_learning_rate(lr, optimizer, epoch):
     new_lr = lr * (0.5 ** (epoch // 30))
     for param_group in optimizer.param_groups:
         param_group['lr'] = new_lr
+
+
+def arg_parse():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dataset', '-d', default='mnist', dest='dataset',
+                        help='Dataset [mnist|fmnist|cifar10]')
+    parser.add_argument('--model', '-m', type=list, default=['central', 'federate'], dest='model', nargs='*',
+                        help='Model list [central, federate]')
+    parser.add_argument('--corrupt', '-c', type=bool, default=True, dest='corrupt',
+                        help='Data Corruption [True|False]')
+
+    dataset = parser.parse_args().dataset
+    model = parser.parse_args().model
+    corrupt = parser.parse_args().corrupt
+
+    return dataset, model, not corrupt, not corrupt
 
 
 if __name__=='__main__':

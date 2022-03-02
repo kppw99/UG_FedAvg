@@ -1,9 +1,21 @@
 from util import *
 from model import *
-from config import *
 
 
 if __name__=='__main__':
+    # Parse arguments
+    DATASET, MODEL_LIST, IID_NON_COR, NON_IID_NON_COR = arg_parse()
+
+    if DATASET == 'mnist':
+        from mnist_config import *
+    elif DATASET == 'fmnist':
+        from fmnist_config import *
+    elif DATASET == 'cifar10':
+        from cifar10_config import *
+    else:
+        print('{} is wrong dataset! [mnist|fmnist|cifar10]'.format(DATASET))
+        exit(1)
+
     # Load data
     tr_X, tr_y, te_X, te_y, pre_X, pre_y = load_data(data=DATASET, pre_train=PRE_TRAIN)
 
