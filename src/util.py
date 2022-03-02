@@ -17,6 +17,9 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
 
+use_cuda = torch.cuda.is_available()
+
+
 class CustomTensorDataset(Dataset):
     """TensorDataset with support of transforms.
     """
@@ -668,12 +671,14 @@ def create_dataloader(x_train, y_train, x_test, y_test, batch_size, dataset='mni
             train_dataset = CustomTensorDataset(tensors=(x_train, y_train), transform=transform)
             train_data = torch.utils.data.DataLoader(train_dataset,
                                                      batch_size=batch_size, shuffle=True,
-                                                     num_workers=workers, pin_memory=True)
+                                                     # num_workers=workers, pin_memory=True
+                                                     )
         if x_test != None and y_test != None:
             test_dataset = CustomTensorDataset(tensors=(x_test, y_test), transform=transform)
             test_data = torch.utils.data.DataLoader(test_dataset,
                                                     batch_size=batch_size, shuffle=False,
-                                                    num_workers=workers, pin_memory=True)
+                                                    # num_workers=workers, pin_memory=True
+                                                    )
     elif dataset=='cifar10':
         workers=4
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -693,12 +698,14 @@ def create_dataloader(x_train, y_train, x_test, y_test, batch_size, dataset='mni
             train_dataset = CustomTensorDataset(tensors=(x_train, y_train), transform=train_transform)
             train_data = torch.utils.data.DataLoader(train_dataset,
                                                      batch_size=batch_size, shuffle=True,
-                                                     num_workers=workers, pin_memory=True)
+                                                     # num_workers=workers, pin_memory=True
+                                                     )
         if x_test != None and y_test != None:
             test_dataset = CustomTensorDataset(tensors=(x_test, y_test), transform=test_transform)
             test_data = torch.utils.data.DataLoader(test_dataset,
                                                     batch_size=batch_size, shuffle=False,
-                                                    num_workers=workers, pin_memory=True)
+                                                    # num_workers=workers, pin_memory=True
+                                                    )
 
     return train_data, test_data
 
@@ -739,6 +746,10 @@ def cal_asr(model, test_y_dict, valid_X_dict, valid_y_dict, target_label, datase
 
             val_X = next(iter(val_data))[0]
             val_y = next(iter(val_data))[1]
+
+        if use_cuda:
+            val_X = val_X.float().cuda()
+            val_y = val_y.cuda()
 
         pred_val_y = model(val_X).argmax(dim=1)
         for idx in range(len(te_y)):

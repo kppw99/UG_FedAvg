@@ -251,7 +251,7 @@ def _train_local_model(model_dict, criterion_dict, optimizer_dict,
                 test_data = DataLoader(TensorDataset(x_test_dict[name_of_x_test_sets[i]],
                                                      y_test_dict[name_of_y_test_sets[i]]), batch_size=1)
             elif dataset=='fmnist':
-                workers = 4
+                workers = 1
                 transform = transforms.Compose([transforms.ToPILImage(),
                                                 transforms.Resize((35, 35)),
                                                 transforms.ToTensor()])
@@ -261,16 +261,18 @@ def _train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                     transform=transform)
                 train_data = torch.utils.data.DataLoader(train_dataset,
                                                          batch_size=batch_size, shuffle=True,
-                                                         num_workers=workers, pin_memory=True)
+                                                         # num_workers=workers, pin_memory=True
+                                                         )
 
                 test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
                                                             y_test_dict[name_of_y_test_sets[i]]),
                                                    transform=transform)
                 test_data = torch.utils.data.DataLoader(test_dataset,
                                                         batch_size=batch_size, shuffle=False,
-                                                        num_workers=workers, pin_memory=True)
+                                                        # num_workers=workers, pin_memory=True
+                                                        )
             elif dataset=='cifar10':
-                workers = 4
+                workers = 1
                 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
                 train_transform = transforms.Compose([transforms.ToPILImage(),
@@ -289,14 +291,16 @@ def _train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                     transform=train_transform)
                 train_data = torch.utils.data.DataLoader(train_dataset,
                                                          batch_size=batch_size, shuffle=True,
-                                                         num_workers=workers, pin_memory=True)
+                                                         # num_workers=workers, pin_memory=True
+                                                         )
 
                 test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
                                                             y_test_dict[name_of_y_test_sets[i]]),
                                                    transform=test_transform)
                 test_data = torch.utils.data.DataLoader(test_dataset,
                                                         batch_size=batch_size, shuffle=False,
-                                                        num_workers=workers, pin_memory=True)
+                                                        # num_workers=workers, pin_memory=True
+                                                        )
 
             model = model_dict[name_of_models[i]]
             criterion = criterion_dict[name_of_criterions[i]]
@@ -318,7 +322,7 @@ def _train_local_model(model_dict, criterion_dict, optimizer_dict,
                 test_data = DataLoader(TensorDataset(x_test_dict[name_of_x_test_sets[i]],
                                                      y_test_dict[name_of_y_test_sets[i]]), batch_size=1)
             elif dataset == 'fmnist':
-                workers = 4
+                workers = 1
                 transform = transforms.Compose([transforms.ToPILImage(),
                                                 transforms.Resize((35, 35)),
                                                 transforms.ToTensor()])
@@ -328,16 +332,18 @@ def _train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                     transform=transform)
                 train_data = torch.utils.data.DataLoader(train_dataset,
                                                          batch_size=batch_size, shuffle=True,
-                                                         num_workers=workers, pin_memory=True)
+                                                         # num_workers=workers, pin_memory=True
+                                                         )
 
                 test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
                                                             y_test_dict[name_of_y_test_sets[i]]),
                                                    transform=transform)
                 test_data = torch.utils.data.DataLoader(test_dataset,
                                                         batch_size=batch_size, shuffle=False,
-                                                        num_workers=workers, pin_memory=True)
+                                                        # num_workers=workers, pin_memory=True
+                                                        )
             elif dataset == 'cifar10':
-                workers = 4
+                workers = 1
                 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
                 train_transform = transforms.Compose([transforms.ToPILImage(),
@@ -356,14 +362,16 @@ def _train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                     transform=train_transform)
                 train_data = torch.utils.data.DataLoader(train_dataset,
                                                          batch_size=batch_size, shuffle=True,
-                                                         num_workers=workers, pin_memory=True)
+                                                         # num_workers=workers, pin_memory=True
+                                                         )
 
                 test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
                                                             y_test_dict[name_of_y_test_sets[i]]),
                                                    transform=test_transform)
                 test_data = torch.utils.data.DataLoader(test_dataset,
                                                         batch_size=batch_size, shuffle=False,
-                                                        num_workers=workers, pin_memory=True)
+                                                        # num_workers=workers, pin_memory=True
+                                                        )
 
             model = model_dict[name_of_models[i]]
             criterion = criterion_dict[name_of_criterions[i]]
@@ -407,7 +415,7 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                           y_train_dict[name_of_y_train_sets[i]]),
                                             batch_size=1, shuffle=False)
             elif dataset == 'fmnist':
-                workers = 4
+                workers = 1
                 transform = transforms.Compose([transforms.ToPILImage(),
                                                 transforms.Resize((35, 35)),
                                                 transforms.ToTensor()])
@@ -417,9 +425,10 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                     transform=transform)
                 train_pre_data = torch.utils.data.DataLoader(train_dataset,
                                                          batch_size=1, shuffle=False,
-                                                         num_workers=workers, pin_memory=True)
+                                                         # num_workers=workers, pin_memory=True
+                                                             )
             elif dataset == 'cifar10':
-                workers = 4
+                workers = 1
                 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
                 train_transform = transforms.Compose([transforms.ToPILImage(),
@@ -434,7 +443,8 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                     transform=train_transform)
                 train_pre_data = torch.utils.data.DataLoader(train_dataset,
                                                          batch_size=1, shuffle=False,
-                                                         num_workers=workers, pin_memory=True)
+                                                         # num_workers=workers, pin_memory=True
+                                                             )
 
             pre_model = model_dict[name_of_models[i]]
             pre_model.eval()
@@ -447,6 +457,10 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                 true_cnt = 0
                 false_cnt = 0
                 for data, target in train_pre_data:
+                    if use_cuda:
+                        data = data.float().cuda()
+                        target = target.cuda()
+
                     output = pre_model(data)
                     prediction = output.argmax(dim=1, keepdim=True)
 
@@ -479,7 +493,7 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                      y_test_dict[name_of_y_test_sets[i]]),
                                        batch_size=1)
             elif dataset == 'fmnist':
-                workers = 4
+                workers = 1
                 transform = transforms.Compose([transforms.ToPILImage(),
                                                 transforms.Resize((35, 35)),
                                                 transforms.ToTensor()])
@@ -488,16 +502,18 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                     transform=transform)
                 train_data = torch.utils.data.DataLoader(train_dataset,
                                                          batch_size=batch_size, shuffle=True,
-                                                         num_workers=workers, pin_memory=True)
+                                                         # num_workers=workers, pin_memory=True
+                                                         )
 
                 test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
                                                             y_test_dict[name_of_y_test_sets[i]]),
                                                    transform=transform)
                 test_data = torch.utils.data.DataLoader(test_dataset,
                                                         batch_size=1, shuffle=False,
-                                                        num_workers=workers, pin_memory=True)
+                                                        # num_workers=workers, pin_memory=True
+                                                        )
             elif dataset == 'cifar10':
-                workers = 4
+                workers = 1
                 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
                 train_transform = transforms.Compose([transforms.ToPILImage(),
@@ -515,14 +531,16 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                     transform=train_transform)
                 train_data = torch.utils.data.DataLoader(train_dataset,
                                                          batch_size=batch_size, shuffle=True,
-                                                         num_workers=workers, pin_memory=True)
+                                                         # num_workers=workers, pin_memory=True
+                                                         )
 
                 test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
                                                             y_test_dict[name_of_y_test_sets[i]]),
                                                    transform=test_transform)
                 test_data = torch.utils.data.DataLoader(test_dataset,
                                                         batch_size=1, shuffle=False,
-                                                        num_workers=workers, pin_memory=True)
+                                                        # num_workers=workers, pin_memory=True
+                                                        )
 
             model = model_dict[name_of_models[i]]
             criterion = criterion_dict[name_of_criterions[i]]
@@ -541,7 +559,7 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                           y_train_dict[name_of_y_train_sets[i]]),
                                             batch_size=1, shuffle=False)
             elif dataset == 'fmnist':
-                workers = 4
+                workers = 1
                 transform = transforms.Compose([transforms.ToPILImage(),
                                                 transforms.Resize((35, 35)),
                                                 transforms.ToTensor()])
@@ -551,9 +569,10 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                     transform=transform)
                 train_pre_data = torch.utils.data.DataLoader(train_dataset,
                                                              batch_size=1, shuffle=False,
-                                                             num_workers=workers, pin_memory=True)
+                                                             # num_workers=workers, pin_memory=True
+                                                             )
             elif dataset == 'cifar10':
-                workers = 4
+                workers = 1
                 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
                 train_transform = transforms.Compose([transforms.ToPILImage(),
@@ -568,7 +587,8 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                     transform=train_transform)
                 train_pre_data = torch.utils.data.DataLoader(train_dataset,
                                                              batch_size=1, shuffle=False,
-                                                             num_workers=workers, pin_memory=True)
+                                                             # num_workers=workers, pin_memory=True
+                                                             )
 
             pre_model = model_dict[name_of_models[i]]
             pre_model.eval()
@@ -613,7 +633,7 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                      y_test_dict[name_of_y_test_sets[i]]),
                                        batch_size=1)
             elif dataset == 'fmnist':
-                workers = 4
+                workers = 1
                 transform = transforms.Compose([transforms.ToPILImage(),
                                                 transforms.Resize((35, 35)),
                                                 transforms.ToTensor()])
@@ -622,16 +642,18 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                     transform=transform)
                 train_data = torch.utils.data.DataLoader(train_dataset,
                                                          batch_size=batch_size, shuffle=True,
-                                                         num_workers=workers, pin_memory=True)
+                                                         # num_workers=workers, pin_memory=True
+                                                         )
 
                 test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
                                                             y_test_dict[name_of_y_test_sets[i]]),
                                                    transform=transform)
                 test_data = torch.utils.data.DataLoader(test_dataset,
                                                         batch_size=1, shuffle=False,
-                                                        num_workers=workers, pin_memory=True)
+                                                        # num_workers=workers, pin_memory=True
+                                                        )
             elif dataset == 'cifar10':
-                workers = 4
+                workers = 1
                 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
                 train_transform = transforms.Compose([transforms.ToPILImage(),
@@ -649,14 +671,16 @@ def _uncert_train_local_model(model_dict, criterion_dict, optimizer_dict,
                                                     transform=train_transform)
                 train_data = torch.utils.data.DataLoader(train_dataset,
                                                          batch_size=batch_size, shuffle=True,
-                                                         num_workers=workers, pin_memory=True)
+                                                         # num_workers=workers, pin_memory=True
+                                                         )
 
                 test_dataset = CustomTensorDataset(tensors=(x_test_dict[name_of_x_test_sets[i]],
                                                             y_test_dict[name_of_y_test_sets[i]]),
                                                    transform=test_transform)
                 test_data = torch.utils.data.DataLoader(test_dataset,
                                                         batch_size=1, shuffle=False,
-                                                        num_workers=workers, pin_memory=True)
+                                                        # num_workers=workers, pin_memory=True
+                                                        )
 
             model = model_dict[name_of_models[i]]
             criterion = criterion_dict[name_of_criterions[i]]
@@ -738,7 +762,7 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
                 main_model = load_model('../data/model_mnist/pre_train_model_no_cuda', dataset=dataset)
         elif dataset == 'fmnist':
             if use_cuda:
-                main_model = load_model('../data/model_fmnist/pre_train_model', dataset=dataset)
+                main_model = load_model('../data/model_fmnist/pre_train_model.pt', dataset=dataset)
             else:
                 main_model = load_model('../data/model_fmnist/pre_train_model_no_cuda', dataset=dataset)
         elif dataset == 'cifar10':
@@ -762,9 +786,9 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
 
     local_model_dict, local_optimizer_dict, local_criterion_dict = _create_local_models(
         dataset=dataset, number_of_samples=number_of_samples)
-    if use_cuda:
-        x_test = x_test.cuda()
-        y_test = y_test.cuda()
+    # if use_cuda:
+    #     x_test = x_test.float().cuda()
+    #     y_test = y_test.cuda()
     _, test_data = create_dataloader(None, None, x_test, y_test, batch_size, dataset=dataset)
 
     main_logs = list()
@@ -827,9 +851,9 @@ def uncert_federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_di
 
     local_model_dict, local_optimizer_dict, local_criterion_dict = _create_local_models(
         dataset=dataset, number_of_samples=number_of_samples)
-    if use_cuda:
-        x_test = x_test.cuda()
-        y_test = y_test.cuda()
+    # if use_cuda:
+    #     x_test = x_test.cuda()
+    #     y_test = y_test.cuda()
     _, test_data = create_dataloader(None, None, x_test, y_test, batch_size, dataset=dataset)
 
     main_logs = list()
@@ -1014,6 +1038,10 @@ def compare_local_and_merged_model(main_model, local_model_dict,
 
             x_test = next(iter(test_data))[0]
             y_test = next(iter(test_data))[1]
+
+        if use_cuda:
+            x_test = x_test.float().cuda()
+            y_test = y_test.cuda()
 
         y_pred = local_model(x_test).argmax(dim=1)
         local_accuracy = accuracy_score(y_pred.cpu(), y_test.cpu())
