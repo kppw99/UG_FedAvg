@@ -1,7 +1,7 @@
 # Uncertainty_Guided_FedAvg
 
 ### Prerequisite 
-#### Download dataset (MUST download the dataset to the data directory)
+#### Download dataset (MUST download the dataset file into the data directory)
 - MNIST: [mnist.pkl.gz](https://drive.google.com/file/d/1Md3dx7gpG6K5ZQcmckz6dDacu3wnODDS/view?usp=sharing)
 - Fashion-MNIST: [fmnist.pkl.gz](https://drive.google.com/file/d/1AFlRmULhfO1Vio-2vKJZ3aTtxBKKZD63/view?usp=sharing)
 - CIFAR10: [cifar10.pkl.gz](https://drive.google.com/file/d/1r_ik_Uuhp0eePlPUJtrXVFUF3bOvFa15/view?usp=sharing)
