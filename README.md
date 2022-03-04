@@ -17,7 +17,7 @@ COR_LOCAL_RATIO = 1.0
 CENTRAL_EPOCHS = 50
 
 PRE_TRAIN = True
-UNCERT_FEDAVG_LIST = [0, 1, 2]  # fl_origin=0, fl_with_pre_train=1, fl_with_uncertainty=2
+UNCERT_FEDAVG_LIST = [0, 1, 2, 3]  # fl_origin=0, fl_with_pre_train=1, fl_with_uncertainty=2, arfl(#baseline)=3
 COR_MODE_LIST = [0, 1, 2]  # label_flipping=0, label_shuffling=1, backdoor=2
 DIST_LIST = ['iid', 'non-iid']  # iid, non-iid
 TARGET_LABEL = 1    # for backdoor attack
