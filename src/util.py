@@ -771,17 +771,27 @@ def adjust_learning_rate(lr, optimizer, epoch):
 
 
 def arg_parse():
+    def _str2bool(v):
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', '-d', default='mnist', dest='dataset',
                         help='Dataset [mnist|fmnist|cifar10]')
-    parser.add_argument('--model', '-m', type=list, default=['central', 'federate'], dest='model', nargs='*',
+    parser.add_argument('--model', '-m', type=list, default=['federate'], dest='model', nargs='*',
                         help='Model list [central, federate]')
-    parser.add_argument('--corrupt', '-c', type=bool, default=True, dest='corrupt',
+    parser.add_argument('--corrupt', '-c', default='True', dest='corrupt',
                         help='Data Corruption [True|False]')
 
     dataset = parser.parse_args().dataset
     model = parser.parse_args().model
     corrupt = parser.parse_args().corrupt
+    corrupt = _str2bool(corrupt)
+
+    print(corrupt)
 
     return dataset, model, not corrupt, not corrupt
 
