@@ -784,7 +784,7 @@ def arg_parse():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', '-d', default='mnist', dest='dataset',
                         help='Dataset [mnist|fmnist|cifar10]')
-    parser.add_argument('--model', '-m', type=list, default=['federate'], dest='model', nargs='*',
+    parser.add_argument('--model', '-m', default=['central', 'federate'], dest='model', nargs='*',
                         help='Model list [central, federate]')
     parser.add_argument('--corrupt', '-c', default='True', dest='corrupt',
                         help='Data Corruption [True|False]')
@@ -793,8 +793,6 @@ def arg_parse():
     model = parser.parse_args().model
     corrupt = parser.parse_args().corrupt
     corrupt = _str2bool(corrupt)
-
-    print(corrupt)
 
     return dataset, model, not corrupt, not corrupt
 
