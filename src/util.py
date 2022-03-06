@@ -758,7 +758,10 @@ def cal_asr(model, test_y_dict, valid_X_dict, valid_y_dict, target_label, datase
                 if int(pred_val_y[idx]) == target_label:
                     s_cnt += 1
                 t_cnt += 1
-    asr = float(float(s_cnt) / float(t_cnt))
+    if t_cnt == 0:
+        asr = 0.0
+    else:
+        asr = float(float(s_cnt) / float(t_cnt))
     print('\n- Attack Success Rate: {} ({}/{})'.format(asr, s_cnt, t_cnt))
     return asr
 
