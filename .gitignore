@@ -145,3 +145,4 @@ src/*.ipynb
 src/mnist_config.py
 src/fmnist_config.py
 src/cifar10_config.py
+src/tags
