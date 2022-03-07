@@ -15,7 +15,7 @@ import torch.nn.functional as F
 from arfl import *
 
 
-FL_ALGO = ['origin', 'with_pretrain', 'uncertainty', 'arfl(baseline)']
+FL_ALGO = ['origin', 'with_pretrain', 'uncertainty', 'arfl(baseline)', 'fltrust']
 CORRUPTION_MODE = ['label_flipping', 'label_shuffling', 'backdoor']
 use_cuda = torch.cuda.is_available()
 
@@ -1114,6 +1114,45 @@ def temp_update_main_model(main_model, model_dict):
     return main_model
 
 
+def fltrust_update_main_model(main_model, local_model_dict):
+    def _reshape(x):
+        temp_x = list()
+        for item in x.items():
+            temp_x.extend(list(np.array(item[1].tolist()).reshape(-1)))
+        return temp_x
+
+    def _cos_sim(a, b):
+        return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+    def _relu(x):
+        return np.maximum(0, x)
+
+    node_cnt = len(local_model_dict)
+    name_of_models = list(local_model_dict.keys())
+
+    with torch.no_grad():
+        main_state = main_model.state_dict()
+        g_0 = _reshape(main_state)
+
+        ts_list = list()
+        for i in range(node_cnt):
+            local_model_state = local_model_dict[name_of_models[i]].state_dict()
+            g_i = _reshape(local_model_state)
+            ts = _relu(_cos_sim(g_i, g_0))
+            ts_list.append(ts)
+        ts_sum = sum(ts_list)
+
+        for key in main_state:
+            total_state = 0.0
+            for i in range(node_cnt):
+                total_state += (local_model_dict[name_of_models[i]].state_dict()[key] * (ts_list[i] / ts_sum))
+            main_state[key] = total_state
+
+        main_model.load_state_dict(main_state)
+
+    return main_model
+
+
 def _create_local_models(dataset='mnist', number_of_samples=10, lr=0.01, momentum=0.9):
     model_dict = dict()
     optimizer_dict = dict()
@@ -1224,8 +1263,10 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
                                        number_of_samples, epochs=epochs, batch_size=batch_size,
                                        verbose=verbose, dataset=dataset)
 
-        if uncert==3:
+        if uncert == 3:
             main_model = arfl_update_main_model(main_model, local_model_dict)
+        elif uncert == 4:
+            main_model = fltrust_update_main_model(main_model, local_model_dict)
         else:
             main_model = _update_main_model(main_model, local_model_dict)
         test_loss, test_accuracy = _evaluate(main_model, test_data, main_criterion)
@@ -1565,7 +1606,7 @@ def do_FL(_dataset, _iteration, _epochs, _batch_size,
             verbose=verbose,
             uncert=uncert
         )
-    elif uncert == 1:
+    elif uncert == 1 or uncert == 4:
         main_model, local_models = federated_learning(
             _tr_X_dict, _tr_y_dict, _te_X_dict, _te_y_dict, _te_X, _te_y,
             _num_of_local,
