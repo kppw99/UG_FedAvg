@@ -15,7 +15,7 @@ import torch.nn.functional as F
 from arfl import *
 
 
-FL_ALGO = ['origin', 'with_pretrain', 'uncertainty', 'arfl(baseline)', 'fltrust']
+FL_ALGO = ['origin', 'with_pretrain', 'uncertainty', 'arfl(baseline)', 'fltrust(baseline)']
 CORRUPTION_MODE = ['label_flipping', 'label_shuffling', 'backdoor']
 use_cuda = torch.cuda.is_available()
 
