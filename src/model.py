@@ -1,8 +1,7 @@
 import time
 import os
 from util import *
-# from resnet import *
-# from vgg import *
+
 import torchvision.models as models
 
 from tqdm import tqdm
@@ -719,7 +718,6 @@ def _create_local_models(dataset='mnist', number_of_samples=10, lr=0.01, momentu
         elif dataset=='fmnist':
             model_info = Lenet5()
         elif dataset=='cifar10':
-            # model_info = resnet32()
             model_info = models.resnet18(pretrained=False)
             model_info.fc = nn.Linear(512, 10)
         
@@ -762,7 +760,6 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
         elif dataset=='fmnist':
             main_model = Lenet5()
         elif dataset=='cifar10':
-            # main_model = resnet32()
             main_model = models.resnet18(pretrained=False)
             main_model.fc = nn.Linear(512, 10)
             if use_cuda:
@@ -772,9 +769,7 @@ def federated_learning(x_train_dict, y_train_dict, x_test_dict, y_test_dict, x_t
 
     local_model_dict, local_optimizer_dict, local_criterion_dict = _create_local_models(
         dataset=dataset, number_of_samples=number_of_samples)
-    # if use_cuda:
-    #     x_test = x_test.float().cuda()
-    #     y_test = y_test.cuda()
+
     _, test_data = create_dataloader(None, None, x_test, y_test, batch_size, dataset=dataset)
 
     main_logs = list()
@@ -950,17 +945,12 @@ def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, d
             model = Lenet5()
     elif dataset=='cifar10':
         if use_cuda:
-            # model = resnet20().cuda() # FL 세팅에서는 resnet32를, Central 상황에서는 resnet20으로 들어가있어 32로 통일하였습니다
-            # model = resnet32().cuda()
             model = models.resnet18(pretrained=False)
             model.fc = nn.Linear(512, 10)
             model.cuda()
         else:
-            # model = resnet20()
-            # model = resnet32()
             model = models.resnet18(pretrained=False)
             model.fc = nn.Linear(512, 10)
-            # model.cuda()
 
     optimizer = torch.optim.SGD(model.parameters(), lr=0.05, momentum=0.9, weight_decay=5e-4)
     criterion = nn.CrossEntropyLoss()
@@ -1069,7 +1059,6 @@ def load_model(path, dataset='mnist'):
         if use_cuda:
             model.cuda()
     elif dataset=='cifar10':
-        # model = resnet32()
         model = models.resnet18(pretrained=False)
         model.fc = nn.Linear(512, 10)
         if use_cuda:
