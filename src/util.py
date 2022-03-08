@@ -165,8 +165,12 @@ def _add_bd_pattern_cifar10(x, start_idx=1, size=5, show=False):
 def _add_bd_pattern_fmnist(x, start_idx=1, size=5, show=False):
     # trigger pattern (plus)
     for i in range(start_idx, start_idx + size):
-        x[i][(start_idx + size) // 2] = 255.0  # vertical line
-        x[(start_idx + size) // 2][i] = 255.0  # horizontal line
+        x[i][((start_idx + size) // 2) - 1] = 255.0  # vertical line
+        x[i][((start_idx + size) // 2) + 1] = 255.0  # vertical line
+
+        x[((start_idx + size) // 2) - 1][i] = 255.0  # horizontal line
+        x[((start_idx + size) // 2) + 1][i] = 255.0  # horizontal line
+
     if show is True:
         plt.imshow(x)
         plt.show()
