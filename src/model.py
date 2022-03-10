@@ -932,7 +932,7 @@ def create_eval_report(model, x_test, y_test, printable=True, dataset='mnist'):
     return report, accuracy
 
 
-def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, dataset='mnist'):
+def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, log_name, dataset='mnist'):
     if dataset=='mnist':
         if use_cuda:
             model = CNN4FL_MNIST().cuda()
@@ -974,7 +974,7 @@ def centralized_learning(x_train, y_train, x_test, y_test, epochs, batch_size, d
 
     filetime = time.strftime("_%Y%m%d-%H%M%S")
     tempname = dataset + '_' + str(epochs) + '_' + str(batch_size) + '_' + str(central_test_accuracy)
-    filename = '../data/exp_result/' + 'central_' + tempname + filetime + '.pkl'
+    filename = '../data/exp_result/' + 'central_' + log_name + tempname + filetime + '.pkl'
 
     log_dict = {
         'main': logs
@@ -1069,11 +1069,12 @@ def load_model(path, dataset='mnist'):
     return model
 
 
-def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs, dataset='mnist'):
+def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs, log_name, dataset='mnist'):
     centralized_model = centralized_learning(
         tr_X, tr_y, te_X, te_y,
         epochs=epochs,
         batch_size=batch_size,
+        log_name=log_name,
         dataset=dataset
     )
 
@@ -1083,7 +1084,7 @@ def do_centralize_learning(tr_X, tr_y, te_X, te_y, batch_size, epochs, dataset='
     if not os.path.exists(save_base):
         os.makedirs(save_base)
     
-    model_name = os.path.join(save_base, 'centralized_model_' + str(epochs) + '_epochs')
+    model_name = os.path.join(save_base, 'centralized_model_' + log_name + str(epochs) + '_epochs')
     model_name += time.strftime("_%Y%m%d-%H%M%S")
     save_model(centralized_model, model_name)
     del centralized_model
@@ -1218,7 +1219,7 @@ def do_iid_corruption(total_cnt, cur_cnt,
         mode=cor_mode,
         num_of_sample=local_num,
         verbose=True,
-        dataset='mnist'
+        dataset=dataset
     )
 
     log_name = 'federated_' + 'iid' + '_'

@@ -23,15 +23,126 @@ if __name__=='__main__':
     for MODEL in MODEL_LIST:
         # Centralized Learning
         if MODEL == 'central':
-            print('\n===================================')
-            print('CUDA:', torch.cuda.is_available())
-            print('MODEL:', MODEL)
-            print('DATASET:', DATASET)
-            print('EPOCHS:', CENTRAL_EPOCHS)
-            print('BATCH_SIZE:', BATCH_SIZE)
-            print('===================================\n')
+            if IID_NON_COR or NON_IID_NON_COR:
+                print('\n===================================')
+                print('CUDA:', torch.cuda.is_available())
+                print('MODEL:', MODEL)
+                print('DATASET:', DATASET)
+                print('EPOCHS:', CENTRAL_EPOCHS)
+                print('BATCH_SIZE:', BATCH_SIZE)
+                print('===================================\n')
 
-            do_centralize_learning(tr_X, tr_y, te_X, te_y, BATCH_SIZE, CENTRAL_EPOCHS, DATASET)
+                log_name = 'non_corrupted_'
+                do_centralize_learning(tr_X, tr_y, te_X, te_y, BATCH_SIZE, CENTRAL_EPOCHS, log_name, DATASET)
+                continue
+
+            for DIST in DIST_LIST:
+                if DIST == 'iid':
+                    for COR_LABEL_RATIO in COR_LABEL_RATIO_LIST:
+                        for COR_DATA_RATIO in COR_DATA_RATIO_LIST:
+                            for COR_MODE in COR_MODE_LIST:
+                                print('\n===================================')
+                                print('CUDA:', torch.cuda.is_available())
+                                print('MODEL:', MODEL)
+                                print('DIST:', DIST)
+                                print('DATASET:', DATASET)
+                                print('EPOCHS:', CENTRAL_EPOCHS)
+                                print('BATCH_SIZE:', BATCH_SIZE)
+                                print('COR_MODE:', CORRUPTION_MODE[COR_MODE])
+                                print('COR_LABEL_RATIO:', COR_LABEL_RATIO)
+                                print('COR_DATA_RATIO:', COR_DATA_RATIO)
+                                print('===================================\n')
+
+                                log_name = DIST + '_'
+                                log_name += str(int(COR_LOCAL_RATIO * 10)) + '_cor_local_'
+                                log_name += str(int(COR_LABEL_RATIO * 100)) + '_cor_label_'
+                                log_name += CORRUPTION_MODE[COR_MODE] + '_'
+
+                                if COR_MODE == 2:
+                                    tr_X_dict, tr_y_dict, te_X_dict, te_y_dict, _, _ = create_backdoor_iid_samples(
+                                        tr_X, tr_y, te_X, te_y, target_label=TARGET_LABEL,
+                                        cor_local_ratio=1.0,
+                                        cor_label_ratio=COR_LABEL_RATIO,
+                                        cor_data_ratio=COR_DATA_RATIO,
+                                        num_of_sample=1,
+                                        verbose=True,
+                                        dataset=DATASET
+                                    )
+                                else:
+                                    tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_corrupted_iid_samples(
+                                        tr_X, tr_y, te_X, te_y,
+                                        cor_local_ratio=1.0,
+                                        cor_label_ratio=COR_LABEL_RATIO,
+                                        cor_data_ratio=COR_DATA_RATIO,
+                                        mode=COR_MODE,
+                                        num_of_sample=1,
+                                        verbose=True,
+                                        dataset=DATASET
+                                    )
+
+                                tr_X = tr_X_dict['x_train0']
+                                tr_y = tr_y_dict['y_train0']
+                                te_X = te_X_dict['x_test0']
+                                te_y = te_y_dict['y_test0']
+
+                                do_centralize_learning(tr_X, tr_y, te_X, te_y, BATCH_SIZE, CENTRAL_EPOCHS,
+                                                       log_name, DATASET)
+                else:
+                    for COR_MINOR_LABEL_CNT in COR_MINOR_LABEL_CNT_LIST:
+                        for COR_MINOR_DATA_RATIO in COR_MINOR_DATA_RATIO_LIST:
+                            for COR_MODE in COR_MODE_LIST:
+                                print('\n===================================')
+                                print('CUDA:', torch.cuda.is_available())
+                                print('MODEL:', MODEL)
+                                print('DIST:', DIST)
+                                print('DATASET:', DATASET)
+                                print('EPOCHS:', CENTRAL_EPOCHS)
+                                print('BATCH_SIZE:', BATCH_SIZE)
+                                print('COR_MODE:', CORRUPTION_MODE[COR_MODE])
+                                print('PDIST:', PDIST)
+                                print('COR_MAJOR_DATA_RATIO:', COR_MAJOR_DATA_RATIO)
+                                print('COR_MINOR_LABEL_CNT:', COR_MINOR_LABEL_CNT)
+                                print('COR_MINOR_DATA_RATIO:', COR_MINOR_DATA_RATIO)
+                                print('===================================\n')
+
+                                log_name = DIST + '_'
+                                log_name += str(int(COR_MINOR_LABEL_CNT)) + '_cor_minor_label_'
+                                log_name += str(int(COR_MINOR_DATA_RATIO * 100)) + '_cor_minor_data_'
+                                log_name += CORRUPTION_MODE[COR_MODE] + '_'
+
+                                if COR_MODE == 2:   # backdoor attack
+                                    tr_X_dict, tr_y_dict, te_X_dict, te_y_dict, _, _ = create_backdoor_non_iid_samples(
+                                        tr_X, tr_y, te_X, te_y, TARGET_LABEL,
+                                        cor_local_ratio=1.0,
+                                        cor_minor_label_cnt=COR_MINOR_LABEL_CNT,
+                                        cor_major_data_ratio=COR_MAJOR_DATA_RATIO,
+                                        cor_minor_data_ratio=COR_MINOR_DATA_RATIO,
+                                        pdist=PDIST,
+                                        num_of_sample=1,
+                                        verbose=True,
+                                        dataset=DATASET
+                                    )
+                                else:
+                                    tr_X_dict, tr_y_dict, te_X_dict, te_y_dict = create_corrupted_non_iid_samples(
+                                        tr_X, tr_y, te_X, te_y,
+                                        cor_local_ratio=1.0,
+                                        cor_minor_label_cnt=COR_MINOR_LABEL_CNT,
+                                        cor_major_data_ratio=COR_MAJOR_DATA_RATIO,
+                                        cor_minor_data_ratio=COR_MINOR_DATA_RATIO,
+                                        mode=COR_MODE,
+                                        pdist=PDIST,
+                                        num_of_sample=1,
+                                        verbose=True,
+                                        dataset=DATASET
+                                    )
+
+                                tr_X = tr_X_dict['x_train0']
+                                tr_y = tr_y_dict['y_train0']
+                                te_X = te_X_dict['x_test0']
+                                te_y = te_y_dict['y_test0']
+
+                                do_centralize_learning(tr_X, tr_y, te_X, te_y, BATCH_SIZE, CENTRAL_EPOCHS,
+                                                       log_name, DATASET)
             continue
 
         # Federated Learning
